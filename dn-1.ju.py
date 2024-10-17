@@ -36,6 +36,10 @@ stevke 16 (3 * 16 * 16 * 16 + 14 * 16 * 16 + 15 * 16 + 9)
 # Napišite funkcijo `take : int -> 'a list -> 'a list`, ki sprejme naravno število in vrne ustrezno število elementov z začetka danega seznama. Če je podani seznam krajši od zahtevane dolžine, naj funkcija vrne kar celoten seznam.
 
 # %%
+let take (n : int) (list: 'a list) : 'a list =
+	let rec take_aux 
+
+# %%
 take 3 [1; 2; 3; 4; 5]
 
 # %%
