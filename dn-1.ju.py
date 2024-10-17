@@ -11,15 +11,13 @@
 # Napišite funkcijo `stevke : int -> int -> int list`, ki sprejme pozitivni celi števili $b$ in $n$ ter vrne seznam števk števila $n$ v bazi $b$. Pri tem tudi za baze, ki so večje od $10$, uporabimo števke od $0$ do $b - 1$.
 
 # %%
-let stevke (b : int) (n : int) : int list = 
-    let rec stevke_aux (acc : int list) (b : int) (n : int) : int list = match b, n with
-        | _, 0 -> acc
-        | b, n ->
-            let k = (n / b) in
-            let r = n - b * k in
-            (stevke_aux[@tailrec]) (r :: acc) b k
+let stevke (b : int) (n : int) : int list =
+    let rec stevke_aux (acc : int list) (b : int) (n : int) : int list = match n with
+        | 0 -> acc
+        | n -> (stevke_aux[@tailrec]) ((n mod b) :: acc) b (n/b)
     in
     stevke_aux [] b n
+
 # %%
 stevke 10 12345
 
@@ -37,7 +35,12 @@ stevke 16 (3 * 16 * 16 * 16 + 14 * 16 * 16 + 15 * 16 + 9)
 
 # %%
 let take (n : int) (list: 'a list) : 'a list =
-	let rec take_aux 
+    let rec take_aux (acc : 'a list) (n : int) (list : 'a list) : 'a list = match list with
+        | _ when n <= 0 -> acc
+        | [] -> acc
+        | head :: tail -> (take_aux[@tailrec]) (head :: acc) (n-1) tail
+    in
+    List.rev (take_aux [] n list)
 
 # %%
 take 3 [1; 2; 3; 4; 5]
@@ -52,6 +55,12 @@ take 10 [1; 2; 3; 4; 5]
 # Napišite funkcijo `drop_while : ('a -> bool) -> 'a list -> 'a list`, ki z začetka seznama odstrani vse elemente, ki zadoščajo danemu predikatu. Ko najde element, ki predikatu ne zadošča, vrne preostanek seznama.
 
 # %%
+let rec drop_while (p : 'a -> bool) (list : 'a list) : 'a list = match list with
+    | [] -> []
+    | head :: tail when not (p head) -> head :: tail
+    | head :: tail -> (drop_while[@tailrec]) p tail
+
+# %%
 drop_while (fun x -> x < 5) [3; 1; 4; 1; 5; 9; 2; 6; 5; 3; 5]
 
 # %%
@@ -64,6 +73,20 @@ drop_while (fun x -> x < 5) [9; 8; 7; 6; 5; 4; 3; 2; 1; 0]
 # Napišite funkcijo `filter_mapi : (int -> 'a -> 'b option) -> 'a list -> 'b list`, ki deluje tako kot `List.filter_map`, le da funkcija poleg elemenov dobi še njihove indekse.
 
 # %%
+let filter_mapi (f : int -> 'a -> 'b option) (list : 'a list) : 'b list =
+    let rec filter_mapi_aux (acc : 'b list) (i : int) (f : int -> 'a -> 'b option) (list : 'a list) : 'b list = match list with
+        | [] -> acc
+        | head :: tail -> (filter_mapi_aux[@tailrec])
+            (
+                match f i head with
+                    | None -> acc
+                    | Some x -> x :: acc
+            )
+            (i+1) f tail
+    in
+    List.rev (filter_mapi_aux [] 0 f list)
+
+# %%
 filter_mapi
   (fun i x -> if i mod 2 = 0 then Some (x * x) else None)
   [1; 2; 3; 4; 5; 6; 7; 8; 9]
@@ -73,7 +96,7 @@ filter_mapi
 
 # %% [markdown]
 # Na predavanjih smo videli, da funkciji `curry : ('a * 'b -> 'c) -> ('a -> ('b -> 'c))` in `uncurry : ('a -> ('b -> 'c)) -> ('a * 'b -> 'c)` predstavljata izomorfizem množic $C^{A \times B} \cong (C^B)^A$, če kartezični produkt predstavimo s produktnim, eksponent pa s funkcijskim tipom.
-# 
+#
 # Podobno velja tudi za ostale znane izomorfizme, če disjunktno unijo
 #   $$A + B = \{ \mathrm{in}_1(a) \mid a \in A \} \cup \{ \mathrm{in}_2(b) \mid b \in B \}$$
 # predstavimo s tipom `('a, 'b) sum`, definiranim z:
@@ -83,30 +106,30 @@ type ('a, 'b) sum = In1 of 'a | In2 of 'b
 
 # %% [markdown]
 # Napišite pare funkcij `phi1` & `psi1`, …, `phi7` & `psi7`, ki predstavljajo spodnje izomorfizme množic.
-# 
+#
 
 # %% [markdown]
 # ### $A \times B \cong B \times A$
 
 # %% [markdown]
 # ### $A + B \cong B + A$
-# 
+#
 
 # %% [markdown]
 # ### $A \times (B \times C) \cong (A \times B) \times C$
-# 
+#
 
 # %% [markdown]
 # ### $A + (B + C) \cong (A + B) + C$
-# 
+#
 
 # %% [markdown]
 # ### $A \times (B + C) \cong (A \times B) + (A \times C)$
-# 
+#
 
 # %% [markdown]
 # ### $A^{B + C} \cong A^B \times A^C$
-# 
+#
 
 # %% [markdown]
 # ### $(A \times B)^C \cong A^C \times B^C$
@@ -191,9 +214,9 @@ izpis [0; -3; 3; -1]
 
 # %% [markdown]
 # Ob razmahu strojnega učenja, ki optimalno rešitev išče s pomočjo gradientnega spusta, si želimo čim bolj enostavno računati odvode. Odvod funkcije $f$ v točki $x_0$ lahko seveda ocenimo tako, da v
-# 
+#
 # $$\frac{f (x_0 + h) - f(x_0)}{h}$$
-# 
+#
 # vstavimo dovolj majhno število $h$.
 
 # %%
@@ -258,12 +281,12 @@ odvod vedno_ena 12345.
 
 # %% [markdown]
 # Substitucijska šifra je preprosta šifra, pri kateri črke abecede med seboj permutiramo. Na primer, če bi (angleško) abecedo permutirali kot
-# 
+#
 # ```
 # A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
 # T H E Q U I C K B R W N F X J M P S O V L A Z Y D G
 # ```
-# 
+#
 # bi besedo `HELLO` šifrirali kot `KUNNJ`. Ključe, s katerimi šifriramo besedila bomo predstavili kar z nizi črk, v katere se slikajo črke abecede.
 
 # %%
@@ -275,7 +298,7 @@ let rot13 = "NOPQRSTUVWXYZABCDEFGHIJKLM"
 
 # %%
 let indeks c = Char.code c - Char.code 'A'
-let crka i = Char.chr (i + Char.code 'A') 
+let crka i = Char.chr (i + Char.code 'A')
 
 # %% [markdown]
 # ### Šifriranje
@@ -330,7 +353,7 @@ List.nth slovar 321
 
 # %% [markdown]
 # Med ugibanjem seveda ne bomo poznali celotnega ključa. V tem primeru bomo za neznane črke uporabili znak `_`. Na primer, če bi vedeli, da je črka `A` v besedilu šifrirana kot `X`, črka `C` pa kot `Y`, bi ključ zapisali kot `"X_Y_______________________"`.
-# 
+#
 # Napišite funkcijo `dodaj_zamenjavo : string -> char * char -> string option`, ki sprejme ključ ter ga poskusi razširiti z zamenjavo dane črke. Funkcija naj vrne `None`, če razširitev vodi v ključ, ki ni bijektiven (torej če ima črka že dodeljeno drugo zamenjavo ali če smo isto zamenjavo dodelili dvema različnima črkama).
 
 # %%
