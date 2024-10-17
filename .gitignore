@@ -1,0 +1,11 @@
+# Do not track any backup files
+*.bak
+
+# Remove Jupyter notebook checkpoints from tracking
+.ipynb_checkpoints/
+
+# Remove Python virtual environment from tracking
+.venv/
+
+# Remove opam switch files from tracking
+_opam/
