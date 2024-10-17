@@ -1,6 +1,9 @@
 # Do not track any backup files
 *.bak
 
+# Do not track custom editor configuration
+.editorconfig
+
 # Remove Jupyter notebook checkpoints from tracking
 .ipynb_checkpoints/
 
