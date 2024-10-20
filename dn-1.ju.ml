@@ -551,8 +551,7 @@ let sifriraj (key : string) (string : string) : string =
                 in
                 acc ^ String.make 1
                 (
-                    if 0 <= i && i < (String.length key)
-                    then key.[i]
+                    if 0 <= i && i < (String.length key) then key.[i]
                     else head
                 )
             )
@@ -587,8 +586,7 @@ let inverz (key : string) : string =
     let rec inverz_aux (acc : string) (c : char) : string =
         let ci : int = indeks c
         in
-        if String.length key <= ci
-        then acc
+        if String.length key <= ci then acc
         else inverz_aux
             (
                 match get_index 0 c key_chars with
@@ -690,7 +688,8 @@ let dodaj_zamenjave (partial_key : string) ((string, encoded) : string * string)
             )
             (tail1, tail2)
     in
-    dodaj_zamenjave_aux (Some partial_key) ((explode string), (explode encoded))
+    if String.length string <> String.length encoded then None
+    else dodaj_zamenjave_aux (Some partial_key) ((explode string), (explode encoded))
 
 # %%
 dodaj_zamenjave "__________________________" ("HELLO", "KUNNJ")
