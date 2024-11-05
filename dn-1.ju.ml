@@ -66,10 +66,10 @@ let rec drop_while (p : 'a -> bool) (list : 'a list) : 'a list =
         else drop_while p tl
 
 # %%
-drop_while (fun x -> x < 5) [3; 1; 4; 1; 5; 9; 2; 6; 5; 3; 5]
+drop_while (fun (x : int) : bool -> x < 5) [3; 1; 4; 1; 5; 9; 2; 6; 5; 3; 5]
 
 # %%
-drop_while (fun x -> x < 5) [9; 8; 7; 6; 5; 4; 3; 2; 1; 0]
+drop_while (fun (x : int) : bool -> x < 5) [9; 8; 7; 6; 5; 4; 3; 2; 1; 0]
 
 # %% [markdown]
 # ### Funkcija `filter_mapi`
@@ -95,7 +95,7 @@ let filter_mapi (f : int -> 'a -> 'b option) (list : 'a list) : 'b list =
 
 # %%
 filter_mapi
-    (fun i x -> if i mod 2 = 0 then Some (x * x) else None)
+    (fun (i : int) (x : int) : int option -> if i mod 2 = 0 then Some (x * x) else None)
     [1; 2; 3; 4; 5; 6; 7; 8; 9]
 
 # %% [markdown]
@@ -121,7 +121,7 @@ type ('a, 'b) sum = In1 of 'a | In2 of 'b
 let phi1 ((a, b) : 'a * 'b) : 'b * 'a =
     (b, a)
 
-(*let psi1 : 'b * 'a -> 'a * 'b = phi1*)
+(* let psi1 : 'b * 'a -> 'a * 'b = phi1 *)
 let psi1 ((b, a) : 'b * 'a) : 'a * 'b =
     (a, b)
 
@@ -134,7 +134,7 @@ let phi2 (x : ('a, 'b) sum) : ('b, 'a) sum =
     | In1 a -> In2 a
     | In2 b -> In1 b
 
-(*let psi2 : ('b, 'a) sum -> ('a, 'b) sum = phi2*)
+(* let psi2 : ('b, 'a) sum -> ('a, 'b) sum = phi2 *)
 let psi2 (x : ('b, 'a) sum) : ('a, 'b) sum =
     match x with
     | In1 b -> In2 b
@@ -238,6 +238,12 @@ let pocisti (p : polinom) : polinom =
 # %%
 pocisti [1; -2; 3; 0; 0]
 
+# %%
+pocisti [0; 0]
+
+# %%
+pocisti []
+
 # %% [markdown]
 # ### Seštevanje
 
@@ -260,23 +266,17 @@ let ( +++ ) (p1 : polinom) (p2 : polinom) : polinom =
 # %%
 [1; -2; 3] +++ [1; 2; -3]
 
+# %%
+[] +++ [1; 2; 3]
+
+# %%
+[] +++ []
+
 # %% [markdown]
 # ### Množenje
 
 # %% [markdown]
 # Napišite funkcijo `( *** ) : polinom -> polinom -> polinom`, ki zmnoži dva polinoma.
-
-# %%
-let rec print_list list =
-    let rec print_list_aux list = function
-        | [] -> list
-        | e::l -> print_int e ; print_string " " ; print_list_aux list l
-    in
-    print_list_aux list list
-    |>
-
-# %%
-print_list [1; 2; 3; 4]
 
 # %%
 let ( *** ) (p1 : polinom) (p2 : polinom) : polinom =
@@ -301,6 +301,15 @@ let ( *** ) (p1 : polinom) (p2 : polinom) : polinom =
 # %%
 [1; 1] *** [1; -1]
 
+# %%
+[] *** [1; 2; 3]
+
+# %%
+[] *** []
+
+# %%
+[1; 2; 0] *** [1; 2; 3]
+
 # %% [markdown]
 # ### Izračun vrednosti v točki
 
@@ -309,7 +318,7 @@ let ( *** ) (p1 : polinom) (p2 : polinom) : polinom =
 
 # %%
 let vrednost (p : polinom) (x : int) : int =
-    let rec vrednost_aux (acc : int) (p : polinom) =
+    let rec vrednost_aux (acc : int) (p : polinom) : int =
         match p with
         | [] -> acc
         | hd :: tl -> vrednost_aux (hd + acc * x) tl
@@ -319,6 +328,9 @@ let vrednost (p : polinom) (x : int) : int =
 
 # %%
 vrednost [1; -2; 3] 2
+
+# %%
+vrednost [] 10
 
 # %% [markdown]
 # ### Odvajanje
@@ -333,11 +345,24 @@ let odvod (p : polinom) : polinom =
         | ([] | _ :: []) -> acc
         | _ :: hd2 :: tl -> odvod_aux ((i * hd2) :: acc) (i + 1) (hd2 :: tl)
     in
-    odvod_aux [] 1 p
+    pocisti p
+    |> odvod_aux [] 1
     |> List.rev
 
 # %%
 odvod [1; -2; 3]
+
+# %%
+odvod [1]
+
+# %%
+odvod [1; 0; 0; 1]
+
+# %%
+odvod []
+
+# %%
+odvod [1; 2; 0]
 
 # %% [markdown]
 # ### Lep izpis
@@ -347,22 +372,20 @@ odvod [1; -2; 3]
 
 # %%
 let izpis (p : polinom) : string =
-    let rec get_digits (acc : int list) (n : int) : int list =
-        match n with
-        | n when n < 0 -> get_digits acc (-n)
-        | n when n < 10 -> n :: acc
-        | n -> get_digits ((n mod 10) :: acc) (n / 10)
-    and unicode_superscript_of_digit (d : int) : string =
-        let superscript_list : string list = ["⁰"; "¹"; "²"; "³"; "⁴"; "⁵"; "⁶"; "⁷"; "⁸"; "⁹"]
-        in
-        match d with
-        | n when 0 <= n && n < 10 -> List.nth superscript_list n
-        | _ -> ""
+    let superscript_list : string list = ["⁰"; "¹"; "²"; "³"; "⁴"; "⁵"; "⁶"; "⁷"; "⁸"; "⁹"]
     in
-    let rec unicode_superscript (acc : string) (digits : int list) : string =
-        match digits with
-        | [] -> acc
-        | hd :: tl -> unicode_superscript (acc ^ unicode_superscript_of_digit hd) tl
+    let rec superscript (acc : string) (n : int) : string =
+        if n < 0 then "⁻" ^ superscript "" (-n)
+        else if n = 0 && acc = "" then "⁰"
+        else
+            match n with
+            | 0 -> acc
+            | n -> superscript
+                (
+                    List.nth superscript_list (n mod 10)
+                    |> (fun (s : string) : string -> s ^ acc)
+                )
+                (n / 10)
     in
     let factor_const (is_leading : bool) (is_constant : bool) (n : int) : string =
         let plus_sign : string = if is_leading then "" else " + "
@@ -380,12 +403,13 @@ let izpis (p : polinom) : string =
         match i with
         | 0 -> ""
         | 1 -> "x"
-        | i when i > 1 -> "x" ^ unicode_superscript "" (get_digits [] i)
-        | i -> "x^(" ^ string_of_int i ^ ")"
+        | i -> "x" ^ superscript "" i
     in
-    let rec izpis_aux (acc : string) (i : int) (p : polinom) =
+    let rec izpis_aux (acc : string) (i : int) (p : polinom) : string =
         match p with
-        | [] -> acc
+        | [] ->
+            if acc = "" then "0"
+            else acc
         | hd :: tl -> izpis_aux
             (
                 match hd with
@@ -394,7 +418,8 @@ let izpis (p : polinom) : string =
             )
             (i + 1) tl
     in
-    izpis_aux "" 0 p
+    pocisti p
+    |> izpis_aux "" 0
 
 # %%
 izpis [1; 2; 1]
@@ -404,6 +429,12 @@ izpis [1; 0; -1; 0; 1; 0; -1; 0; 1; 0; -1; 0; 1]
 
 # %%
 izpis [0; -3; 3; -1]
+
+# %%
+izpis []
+
+# %%
+izpis [1; 2; 0]
 
 # %% [markdown]
 # ## Samodejno odvajanje
@@ -433,12 +464,12 @@ type odvedljiva = (float -> float) * (float -> float)
 
 # %%
 let sinus : odvedljiva = (sin, cos)
-let kosinus : odvedljiva = (cos, (fun x -> -. sin x))
+let kosinus : odvedljiva = (cos, (fun (x : float) : float -> -. sin x))
 let eksp : odvedljiva = (exp, exp)
 let ( ++. ) ((f, f') : odvedljiva) ((g, g') : odvedljiva) : odvedljiva =
     (
-        (fun x -> f x +. g x),
-        (fun x -> f' x +. g' x)
+        (fun (x : float) : float -> f x +. g x),
+        (fun (x : float) : float -> f' x +. g' x)
     )
 
 # %%
@@ -494,7 +525,13 @@ let ( //. ) ((f, f') : odvedljiva) ((g, g') : odvedljiva) : odvedljiva =
     )
 
 # %%
-let kvadrat = identiteta **. identiteta
+let kvadrat : odvedljiva = identiteta **. identiteta
+
+# %%
+vrednost kvadrat 7.
+
+# %%
+odvod kvadrat 7.
 
 # %% [markdown]
 # ### Kompozitum
@@ -546,7 +583,7 @@ let crka (i : int) : char =
     Char.chr (i + Char.code 'A')
 
 # %% [markdown]
-# Predno začnemo reševati pa lahko napišemo še eno uporabno funkcijo `explode : string -> char list`, ki nam niz pretvori v seznam znakov. -Andrej Anžlovar
+# Predno začnemo reševati pa lahko napišemo še par uporabnih funkcij `explode : string -> char list`, ki nam niz pretvori v seznam znakov in `implode : char list -> string`, ki je njen inverz. -Andrej Anžlovar
 
 # %%
 let explode (string : string) : char list =
@@ -565,7 +602,7 @@ let implode (char_list : char list) : string =
 
 # %%
 let sifriraj (key : string) (string : string) : string =
-    let key_len = String.length key
+    let key_len : int = String.length key
     in
     let rec sifriraj_aux (acc : char list) (chars : char list) : char list =
         match chars with
@@ -602,13 +639,21 @@ sifriraj quick_brown_fox "HELLO, WORLD!"
 # Napišite funkcijo `inverz : string -> string`, ki iz ključa izračuna njegov inverz.
 
 # %%
+(* hitrejša in preprostejša implementacija za ključe brez lukenj *)
+let inverz_no_gaps (key : string) : string =
+    List.init (String.length key) crka
+    |> List.combine (explode key)
+    |> List.fast_sort (fun ((c1, _) : char * char) ((c2, _) : char * char) : int -> Char.code c1 - Char.code c2)
+    |> List.map (fun ((_, c) : char * char) : char -> c)
+    |> implode
+
 let inverz (key : string) : string =
     let rec index_of_char_opt (i : int) (c : char) (chars : char list) : int option =
         match chars with
         | [] -> None
         | hd :: _ when hd = c -> Some i
         | _ :: tl -> index_of_char_opt (i + 1) c tl
-    and key_chars = explode key
+    and key_chars : char list = explode key
     in
     let rec inverz_aux (acc : char list) (ci : int) : char list =
         if String.length key <= ci then acc
@@ -628,10 +673,23 @@ let inverz (key : string) : string =
 inverz quick_brown_fox
 
 # %%
+inverz_no_gaps quick_brown_fox
+
+# %%
 inverz rot13 = rot13
 
 # %%
 inverz "BCDEA"
+
+# %%
+inverz_no_gaps "BCDEA"
+
+# %%
+inverz "B_D_A"
+
+# %%
+(* tukaj hitrejša implementacija ne deluje pravilno *)
+inverz_no_gaps "B_D_A"
 
 # %% [markdown]
 # ### Ugibanje ključa
@@ -683,7 +741,9 @@ let dodaj_zamenjavo (partial_key : string) ((c1, c2) : char * char) : string opt
     and c1i : int = indeks c1
     and key_chars : char list = explode partial_key
     in
-    if c1i < 0 || String.length partial_key <= c1i then None
+    if c1i < 0 || String.length partial_key <= c1i then
+        if c1 = c2 then Some partial_key
+        else None
     else
         match partial_key.[c1i] with
         | x when x = c2 -> Some partial_key
@@ -761,7 +821,7 @@ let mozne_razsiritve (partial_key : string) (encoded : string) (dictionary : str
 # %%
 slovar
 |> mozne_razsiritve (String.make 26 '_') "KUNNJ"
-|> List.map (fun kljuc -> (kljuc, sifriraj kljuc "KUNNJ"))
+|> List.map (fun (kljuc : string) : (string * string) -> (kljuc, sifriraj kljuc "KUNNJ"))
 
 # %% [markdown]
 # ### Odšifriranje
@@ -770,23 +830,34 @@ slovar
 # Napišite funkcijo `odsifriraj : string -> string option`, ki sprejme šifrirano besedilo in s pomočjo slovarja besed ugane odšifrirano besedilo. Funkcija naj vrne `None`, če ni mogoče najti nobenega ustreznega ključa.
 
 # %%
-let odsifriraj (string : string) : string list =
-    let rec odsifriraj_aux (encoded_words : string list) (partial_keys : string list) : string list =
+let odsifriraj_all (string : string) : string list =
+    let rec odsifriraj_all_aux (encoded_words : string list) (partial_keys : string list) : string list =
         match encoded_words with
         | [] -> partial_keys
-        | hd :: tl -> odsifriraj_aux tl
+        | hd :: tl -> odsifriraj_all_aux tl
             (
-                let mozne_razsiritve_rev (encoded : string) (dictionary : string list) (partial_key : string) : string list =
+                let mozne_razsiritve_reorder (encoded : string) (dictionary : string list) (partial_key : string) : string list =
                     mozne_razsiritve partial_key encoded dictionary
                 in
-                List.concat_map (mozne_razsiritve_rev hd slovar) partial_keys
+                List.concat_map (mozne_razsiritve_reorder hd slovar) partial_keys
             )
     in
-    odsifriraj_aux (String.split_on_char ' ' string) [String.make 26 '_']
+    odsifriraj_all_aux (String.split_on_char ' ' string) [String.make 26 '_']
     |> List.map (fun (key : string) : string -> sifriraj key string)
+
+let odsifriraj (string : string) : string option =
+    match odsifriraj_all string with
+    | [] -> None
+    | hd :: _ -> Some hd
 
 # %%
 sifriraj quick_brown_fox "THIS IS A VERY HARD PROBLEM"
 
 # %%
 odsifriraj "VKBO BO T AUSD KTSQ MSJHNUF"
+
+# %%
+sifriraj quick_brown_fox "DON'T WON'T" |> odsifriraj_all
+
+# %%
+sifriraj quick_brown_fox "THIS BE A VERY HARD PROBLEM WON'T" |> odsifriraj_all
