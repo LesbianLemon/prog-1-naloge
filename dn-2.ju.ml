@@ -489,9 +489,9 @@ let rec run_program (state : state) : state =
 
 # %%
 let primer_izvajanje_16 : state =
-  fibonacci 10
-  |> init
-  |> run_program
+    fibonacci 10
+    |> init
+    |> run_program
 
 # %% [markdown]
 # ## Branje zbirnika
