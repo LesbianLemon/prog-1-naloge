@@ -18,7 +18,7 @@
 
 # %% [markdown]
 # Nekateri ukazi za argument sprejmejo register, ki ga spreminjajo, na primer: `INC A` ali `POP B`.
-#
+
 # Definirajte naštevni tip `register`, ki bo predstavljal štiri možne registre procesorja **A**, **B**, **C** in **D**.
 
 # %%
@@ -62,7 +62,7 @@ let primer_tipi_3 : int * address = (42, Address 42)
 
 # %% [markdown]
 # Naš simulator bo podpiral naslednje ukaze, pri čemer je _R_ vedno poljuben register, _A_ naslov v ukaznem pomnilniku, _E_ pa izraz, torej bodisi register bodisi celoštevilska konstanta.
-#
+
 # ukaz                      | opis
 # ------------------------: | -----------------------------------------------------------------------------------------------------
 # `MOV` _R_, _E_            | premakni vrednost izraza _E_ v register _R_
@@ -522,7 +522,7 @@ let primer_branje_1 : register = parse_register "A"
 
 # %%
 let parse_expression (expr_str : string) : expression =
-    match int_of_string_opt xpr_str with
+    match int_of_string_opt expr_str with
     | None -> Register (parse_register expr_str)
     | Some n -> Const n
 
