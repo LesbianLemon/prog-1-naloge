@@ -15,6 +15,10 @@ def vsota_prvih : Nat → Nat :=
         | Nat.zero => 0
         | Nat.succ m => n + vsota_prvih m
 
+-- Preizkus vsote naravnih števil
+#eval vsota_prvih 0
+#eval vsota_prvih 10
+
 theorem gauss : (n : Nat) → 2 * vsota_prvih n = n * (n + 1) :=
     by
         intro n
@@ -23,7 +27,8 @@ theorem gauss : (n : Nat) → 2 * vsota_prvih n = n * (n + 1) :=
             simp [vsota_prvih]
         | succ m ih =>
             calc
-                2 * vsota_prvih (m + 1) = 2 * ((m + 1) + vsota_prvih m) := by simp [vsota_prvih]
+                2 * vsota_prvih (m + 1)
+                _ = 2 * ((m + 1) + vsota_prvih m) := by simp [vsota_prvih]
                 _ = 2 * (m + 1) + 2 * vsota_prvih m := Nat.left_distrib 2 (m + 1) (vsota_prvih m)
                 _ = 2 * (m + 1) + m * (m + 1) := by rw [ih]
                 _ = (2 + m) * (m + 1) := by rw [Nat.right_distrib]
@@ -55,6 +60,10 @@ inductive Vektor : Type → Nat → Type where
     | sestavljen {A : Type} {n : Nat} : A → Vektor A n → Vektor A (n + 1)
 deriving Repr
 
+-- Definiramo dva poskusna vektorja
+def empty_nat_vec : Vektor Nat 0 := Vektor.prazen
+def test_nat_vec : Vektor Nat 3 := Vektor.sestavljen 1 (Vektor.sestavljen 2 (Vektor.sestavljen 3 Vektor.prazen))
+
 def stakni {A : Type} {m n : Nat} : Vektor A m → Vektor A n → Vektor A (m + n) :=
     fun (xs : Vektor A m) (ys : Vektor A n) =>
         match xs with
@@ -67,14 +76,26 @@ def obrni {A : Type} {n : Nat} : Vektor A n → Vektor A n :=
         | Vektor.prazen => Vektor.prazen
         | Vektor.sestavljen x xs' => stakni (obrni xs') (Vektor.sestavljen x Vektor.prazen)
 
-def glava {A : Type} {n : Nat} : Vektor A (n + 1) -> A :=
+-- Funkcija obrni pravilno obrne prazen in sestavljen seznam
+#eval obrni empty_nat_vec
+#eval obrni test_nat_vec
+
+def glava {A : Type} {n : Nat} : Vektor A (n + 1) → A :=
     fun xs =>
         match xs with
         | Vektor.sestavljen x _ => x
 
-def rep {A : Type} {n : Nat} : Vektor A (n + 1) -> A :=
+-- Funkcija glava se pravilno pritoži nad praznim seznamom in vrne prvi element sestavljenega
+#eval glava empty_nat_vec
+#eval glava test_nat_vec
+
+def rep {A : Type} {n : Nat} : Vektor A (n + 1) → A :=
     fun xs =>
         glava (obrni xs)
+
+-- Funkcija rep se pravilno pritoži nad praznim seznamom in vrne zadnji element sestavljenega
+#eval rep empty_nat_vec
+#eval rep test_nat_vec
 
 /------------------------------------------------------------------------------
  ## Predikatni račun
@@ -166,7 +187,8 @@ theorem zrcali_zrcali {A : Type} : (t : Drevo A) → zrcali (zrcali t) = t :=
             simp [zrcali]
         | sestavljeno l x d ihl ihd =>
             calc
-                zrcali (zrcali (Drevo.sestavljeno l x d)) = zrcali (Drevo.sestavljeno (zrcali d) x (zrcali l)) := by simp [zrcali]
+                zrcali (zrcali (Drevo.sestavljeno l x d))
+                _ = zrcali (Drevo.sestavljeno (zrcali d) x (zrcali l)) := by simp [zrcali]
                 _ = Drevo.sestavljeno (zrcali (zrcali l)) x (zrcali (zrcali d)) := by simp [zrcali]
                 _ = Drevo.sestavljeno l x d := by rw [ihl, ihd]
 
@@ -178,12 +200,14 @@ theorem visina_zrcali {A : Type} : (t : Drevo A) → visina (zrcali t) = visina 
             simp [zrcali, visina]
         | sestavljeno l x d ihl ihd =>
             calc
-                visina (zrcali (Drevo.sestavljeno l x d)) = visina (Drevo.sestavljeno (zrcali d) x (zrcali l)) := by simp [zrcali]
+                visina (zrcali (Drevo.sestavljeno l x d))
+                _ = visina (Drevo.sestavljeno (zrcali d) x (zrcali l)) := by simp [zrcali]
                 _ = 1 + max (visina (zrcali d)) (visina (zrcali l)) := by simp [visina]
                 _ = 1 + max (visina d) (visina l) := by rw [ihl, ihd]
                 _ = 1 + max (visina l) (visina d) := by rw [Nat.max_comm]
                 _ = visina (Drevo.sestavljeno l x d) := by simp [visina]
 
+-- Pomožna trditev za dokaz enakosti funkcij iskanja elementov
 theorem elementi'_aux_acc {A : Type} : (t : Drevo A) → (lst : List A) → (acc : List A) → elementi'.aux t acc ++ lst = elementi'.aux t (acc ++ lst) :=
     by
         intro t
@@ -195,10 +219,12 @@ theorem elementi'_aux_acc {A : Type} : (t : Drevo A) → (lst : List A) → (acc
         | sestavljeno l x d ihl ihd =>
             intro acc
             calc
-                elementi'.aux (Drevo.sestavljeno l x d) acc ++ lst = elementi'.aux l (x :: elementi'.aux d acc) ++ lst := by simp [elementi'.aux]
+                elementi'.aux (Drevo.sestavljeno l x d) acc ++ lst
+                _ = elementi'.aux l (x :: elementi'.aux d acc) ++ lst := by simp [elementi'.aux]
                 _ = elementi'.aux l (x :: elementi'.aux d acc ++ lst) := ihl (x :: elementi'.aux d acc)
                 _ = elementi'.aux l (x :: (elementi'.aux d acc ++ lst)) := by rw [List.cons_append x (elementi'.aux d acc) lst]
                 _ = elementi'.aux l (x :: elementi'.aux d (acc ++ lst)) := by rw [ihd acc]
+                _ = elementi'.aux (Drevo.sestavljeno l x d) (acc ++ lst) := by simp [elementi'.aux]
 
 theorem elementi_elementi' {A : Type} : (t : Drevo A) → elementi t = elementi' t :=
     by
@@ -208,8 +234,10 @@ theorem elementi_elementi' {A : Type} : (t : Drevo A) → elementi t = elementi'
             simp [elementi, elementi', elementi'.aux]
         | sestavljeno l x d ihl ihd =>
             calc
-                elementi (Drevo.sestavljeno l x d) = elementi l ++ x :: elementi d := by simp [elementi]
+                elementi (Drevo.sestavljeno l x d)
+                _ = elementi l ++ x :: elementi d := by simp [elementi]
                 _ = elementi' l ++ x :: elementi' d := by rw [ihl, ihd]
                 _ = elementi'.aux l [] ++ x :: elementi'.aux d [] := by simp [elementi']
                 _ = elementi'.aux l (x :: elementi'.aux d []) := elementi'_aux_acc l (x :: elementi'.aux d []) []
                 _ = elementi'.aux (Drevo.sestavljeno l x d) [] := by simp [elementi'.aux]
+                _ = elementi' (Drevo.sestavljeno l x d) := by simp [elementi']
