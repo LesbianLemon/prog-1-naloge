@@ -12,12 +12,12 @@
 
 # %%
 let stevke (b : int) (n : int) : int list =
-    let rec stevke_aux (acc : int list) (n : int) : int list =
-        match n with
-        | 0 -> acc
-        | n -> stevke_aux ((n mod b) :: acc) (n / b)
-    in
-    stevke_aux [] n
+	let rec stevke_aux (acc : int list) (n : int) : int list =
+		match n with
+		| 0 -> acc
+		| n -> stevke_aux ((n mod b) :: acc) (n / b)
+	in
+	stevke_aux [] n
 
 # %%
 stevke 10 12345
@@ -36,14 +36,14 @@ stevke 16 (3 * 16 * 16 * 16 + 14 * 16 * 16 + 15 * 16 + 9)
 
 # %%
 let take (n : int) (list: 'a list) : 'a list =
-    let rec take_aux (acc : 'a list) (n : int) (list : 'a list) : 'a list =
-        match list with
-        | _ when n <= 0 -> acc
-        | [] -> acc
-        | hd :: tl -> take_aux (hd :: acc) (n - 1) tl
-    in
-    take_aux [] n list
-    |> List.rev
+	let rec take_aux (acc : 'a list) (n : int) (list : 'a list) : 'a list =
+		match list with
+		| _ when n <= 0 -> acc
+		| [] -> acc
+		| hd :: tl -> take_aux (hd :: acc) (n - 1) tl
+	in
+	take_aux [] n list
+	|> List.rev
 
 # %%
 take 3 [1; 2; 3; 4; 5]
@@ -59,11 +59,11 @@ take 10 [1; 2; 3; 4; 5]
 
 # %%
 let rec drop_while (p : 'a -> bool) (list : 'a list) : 'a list =
-    match list with
-    | [] -> []
-    | hd :: tl ->
-        if not (p hd) then list
-        else drop_while p tl
+	match list with
+	| [] -> []
+	| hd :: tl ->
+		if not (p hd) then list
+		else drop_while p tl
 
 # %%
 drop_while (fun (x : int) : bool -> x < 5) [3; 1; 4; 1; 5; 9; 2; 6; 5; 3; 5]
@@ -79,24 +79,24 @@ drop_while (fun (x : int) : bool -> x < 5) [9; 8; 7; 6; 5; 4; 3; 2; 1; 0]
 
 # %%
 let filter_mapi (f : int -> 'a -> 'b option) (list : 'a list) : 'b list =
-    let rec filter_mapi_aux (acc : 'b list) (i : int) (list : 'a list) : 'b list =
-        match list with
-        | [] -> acc
-        | hd :: tl -> filter_mapi_aux
-            (
-                match f i hd with
-                | None -> acc
-                | Some x -> x :: acc
-            )
-            (i + 1) tl
-    in
-    filter_mapi_aux [] 0 list
-    |> List.rev
+	let rec filter_mapi_aux (acc : 'b list) (i : int) (list : 'a list) : 'b list =
+		match list with
+		| [] -> acc
+		| hd :: tl -> filter_mapi_aux
+			(
+				match f i hd with
+				| None -> acc
+				| Some x -> x :: acc
+			)
+			(i + 1) tl
+	in
+	filter_mapi_aux [] 0 list
+	|> List.rev
 
 # %%
 filter_mapi
-    (fun (i : int) (x : int) : int option -> if i mod 2 = 0 then Some (x * x) else None)
-    [1; 2; 3; 4; 5; 6; 7; 8; 9]
+	(fun (i : int) (x : int) : int option -> if i mod 2 = 0 then Some (x * x) else None)
+	[1; 2; 3; 4; 5; 6; 7; 8; 9]
 
 # %% [markdown]
 # ## Curry-Howardov izomorfizem
@@ -105,7 +105,7 @@ filter_mapi
 # Na predavanjih smo videli, da funkciji `curry : ('a * 'b -> 'c) -> ('a -> ('b -> 'c))` in `uncurry : ('a -> ('b -> 'c)) -> ('a * 'b -> 'c)` predstavljata izomorfizem množic $C^{A \times B} \cong (C^B)^A$, če kartezični produkt predstavimo s produktnim, eksponent pa s funkcijskim tipom.
 
 # Podobno velja tudi za ostale znane izomorfizme, če disjunktno unijo
-#   $$A + B = \{ \mathrm{in}_1(a) \mid a \in A \} \cup \{ \mathrm{in}_2(b) \mid b \in B \}$$
+#	$$A + B = \{ \mathrm{in}_1(a) \mid a \in A \} \cup \{ \mathrm{in}_2(b) \mid b \in B \}$$
 # predstavimo s tipom `('a, 'b) sum`, definiranim z:
 
 # %%
@@ -119,95 +119,95 @@ type ('a, 'b) sum = In1 of 'a | In2 of 'b
 
 # %%
 let phi1 ((a, b) : 'a * 'b) : 'b * 'a =
-    (b, a)
+	(b, a)
 
 (* let psi1 : 'b * 'a -> 'a * 'b = phi1 *)
 let psi1 ((b, a) : 'b * 'a) : 'a * 'b =
-    (a, b)
+	(a, b)
 
 # %% [markdown]
 # ### $A + B \cong B + A$
 
 # %%
 let phi2 (x : ('a, 'b) sum) : ('b, 'a) sum =
-    match x with
-    | In1 a -> In2 a
-    | In2 b -> In1 b
+	match x with
+	| In1 a -> In2 a
+	| In2 b -> In1 b
 
 (* let psi2 : ('b, 'a) sum -> ('a, 'b) sum = phi2 *)
 let psi2 (x : ('b, 'a) sum) : ('a, 'b) sum =
-    match x with
-    | In1 b -> In2 b
-    | In2 a -> In1 a
+	match x with
+	| In1 b -> In2 b
+	| In2 a -> In1 a
 
 # %% [markdown]
 # ### $A \times (B \times C) \cong (A \times B) \times C$
 
 # %%
 let phi3 ((a, (b, c)) : 'a * ('b * 'c)) : ('a * 'b) * 'c =
-    ((a, b), c)
+	((a, b), c)
 
 let psi3 (((a, b), c) : ('a * 'b) * 'c) : 'a * ('b * 'c) =
-    (a, (b, c))
+	(a, (b, c))
 
 # %% [markdown]
 # ### $A + (B + C) \cong (A + B) + C$
 
 # %%
 let phi4 (x : ('a, ('b, 'c) sum) sum) : (('a, 'b) sum, 'c) sum =
-    match x with
-    | In1 a -> In1 (In1 a)
-    | In2 (In1 b) -> In1 (In2 b)
-    | In2 (In2 c) -> In2 c
+	match x with
+	| In1 a -> In1 (In1 a)
+	| In2 (In1 b) -> In1 (In2 b)
+	| In2 (In2 c) -> In2 c
 
 let psi4 (x : (('a, 'b) sum, 'c) sum) : ('a, ('b, 'c) sum) sum =
-    match x with
-    | In1 (In1 a) -> In1 a
-    | In1 (In2 b) -> In2 (In1 b)
-    | In2 c -> In2 (In2 c)
+	match x with
+	| In1 (In1 a) -> In1 a
+	| In1 (In2 b) -> In2 (In1 b)
+	| In2 c -> In2 (In2 c)
 
 # %% [markdown]
 # ### $A \times (B + C) \cong (A \times B) + (A \times C)$
 
 # %%
 let phi5 ((a, x) : 'a * ('b, 'c) sum) : ('a * 'b, 'a * 'c) sum =
-    match x with
-    | In1 b -> In1 (a, b)
-    | In2 c -> In2 (a, c)
+	match x with
+	| In1 b -> In1 (a, b)
+	| In2 c -> In2 (a, c)
 
 let psi5 (x : ('a * 'b, 'a * 'c) sum) : 'a * ('b, 'c) sum =
-    match x with
-    | In1 (a, b) -> (a, In1 b)
-    | In2 (a, c) -> (a, In2 c)
+	match x with
+	| In1 (a, b) -> (a, In1 b)
+	| In2 (a, c) -> (a, In2 c)
 
 # %% [markdown]
 # ### $A^{B + C} \cong A^B \times A^C$
 
 # %%
 let phi6 (f : ('b, 'c) sum -> 'a) : ('b -> 'a) * ('c -> 'a) =
-    (
-        (fun (b : 'b) : 'a -> f (In1 b)),
-        (fun (c : 'c) : 'a -> f (In2 c))
-    )
+	(
+		(fun (b : 'b) : 'a -> f (In1 b)),
+		(fun (c : 'c) : 'a -> f (In2 c))
+	)
 
 let psi6 ((f, g) : ('b -> 'a) * ('c -> 'a)) : ('b, 'c) sum -> 'a =
-    fun (x : ('b, 'c) sum) : 'a ->
-        match x with
-        | In1 b -> f b
-        | In2 c -> g c
+	fun (x : ('b, 'c) sum) : 'a ->
+		match x with
+		| In1 b -> f b
+		| In2 c -> g c
 
 # %% [markdown]
 # ### $(A \times B)^C \cong A^C \times B^C$
 
 # %%
 let phi7 (f : 'c -> 'a * 'b) : ('c -> 'a) * ('c -> 'b) =
-    (
-        (fun (c : 'c) : 'a -> fst (f c)),
-        (fun (c : 'c) : 'b -> snd (f c))
-    )
+	(
+		(fun (c : 'c) : 'a -> fst (f c)),
+		(fun (c : 'c) : 'b -> snd (f c))
+	)
 
 let psi7 ((f, g) : ('c -> 'a) * ('c -> 'b)) : 'c -> 'a * 'b =
-    fun (c : 'c) : ('a * 'b) -> (f c, g c)
+	fun (c : 'c) : ('a * 'b) -> (f c, g c)
 
 # %% [markdown]
 # ## Polinomi
@@ -226,14 +226,14 @@ type polinom = int list
 
 # %%
 let pocisti (p : polinom) : polinom =
-    let rec pocisti_aux (p : polinom) : polinom =
-        match p with
-        | 0 :: tl -> pocisti_aux tl
-        | _ -> p
-    in
-    List.rev p
-    |> pocisti_aux
-    |> List.rev
+	let rec pocisti_aux (p : polinom) : polinom =
+		match p with
+		| 0 :: tl -> pocisti_aux tl
+		| _ -> p
+	in
+	List.rev p
+	|> pocisti_aux
+	|> List.rev
 
 # %%
 pocisti [1; -2; 3; 0; 0]
@@ -252,13 +252,13 @@ pocisti []
 
 # %%
 let ( +++ ) (p1 : polinom) (p2 : polinom) : polinom =
-    let rec sum_aux (acc : polinom) (p1 : polinom) (p2 : polinom) : polinom =
-        match p1, p2 with
-        | ([], _ | _, []) -> List.rev acc @ p1 @ p2
-        | hd1 :: tl1, hd2 :: tl2 -> sum_aux ((hd1 + hd2) :: acc) tl1 tl2
-    in
-    sum_aux [] p1 p2
-    |> pocisti
+	let rec sum_aux (acc : polinom) (p1 : polinom) (p2 : polinom) : polinom =
+		match p1, p2 with
+		| ([], _ | _, []) -> List.rev acc @ p1 @ p2
+		| hd1 :: tl1, hd2 :: tl2 -> sum_aux ((hd1 + hd2) :: acc) tl1 tl2
+	in
+	sum_aux [] p1 p2
+	|> pocisti
 
 # %%
 [1; -2; 3] +++ [1; 2]
@@ -280,20 +280,20 @@ let ( +++ ) (p1 : polinom) (p2 : polinom) : polinom =
 
 # %%
 let ( *** ) (p1 : polinom) (p2 : polinom) : polinom =
-    let rec mul_aux (acc : polinom) (p1 : polinom) (p2 : polinom) : polinom =
-        match p1 with
-        | [] -> acc
-        | hd :: tl -> mul_aux
-            (
-                (
-                    if tl = [] then List.map (( * ) hd) p2
-                    else mul_aux [] [hd] p2
-                )
-                |> ( +++ ) acc
-            )
-            tl (0 :: p2)
-    in
-    mul_aux [] p1 p2
+	let rec mul_aux (acc : polinom) (p1 : polinom) (p2 : polinom) : polinom =
+		match p1 with
+		| [] -> acc
+		| hd :: tl -> mul_aux
+			(
+				(
+					if tl = [] then List.map (( * ) hd) p2
+					else mul_aux [] [hd] p2
+				)
+				|> ( +++ ) acc
+			)
+			tl (0 :: p2)
+	in
+	mul_aux [] p1 p2
 
 # %%
 [1; 1] *** [1; 1] *** [1; 1]
@@ -318,13 +318,13 @@ let ( *** ) (p1 : polinom) (p2 : polinom) : polinom =
 
 # %%
 let vrednost (p : polinom) (x : int) : int =
-    let rec vrednost_aux (acc : int) (p : polinom) : int =
-        match p with
-        | [] -> acc
-        | hd :: tl -> vrednost_aux (hd + acc * x) tl
-    in
-    List.rev p
-    |> vrednost_aux 0
+	let rec vrednost_aux (acc : int) (p : polinom) : int =
+		match p with
+		| [] -> acc
+		| hd :: tl -> vrednost_aux (hd + acc * x) tl
+	in
+	List.rev p
+	|> vrednost_aux 0
 
 # %%
 vrednost [1; -2; 3] 2
@@ -340,14 +340,14 @@ vrednost [] 10
 
 # %%
 let odvod (p : polinom) : polinom =
-    let rec odvod_aux (acc : polinom) (i : int) (p : polinom) : polinom =
-        match p with
-        | ([] | _ :: []) -> acc
-        | _ :: hd2 :: tl -> odvod_aux ((i * hd2) :: acc) (i + 1) (hd2 :: tl)
-    in
-    pocisti p
-    |> odvod_aux [] 1
-    |> List.rev
+	let rec odvod_aux (acc : polinom) (i : int) (p : polinom) : polinom =
+		match p with
+		| ([] | _ :: []) -> acc
+		| _ :: hd2 :: tl -> odvod_aux ((i * hd2) :: acc) (i + 1) (hd2 :: tl)
+	in
+	pocisti p
+	|> odvod_aux [] 1
+	|> List.rev
 
 # %%
 odvod [1; -2; 3]
@@ -372,54 +372,54 @@ odvod [1; 2; 0]
 
 # %%
 let izpis (p : polinom) : string =
-    let superscript_list : string list = ["⁰"; "¹"; "²"; "³"; "⁴"; "⁵"; "⁶"; "⁷"; "⁸"; "⁹"]
-    in
-    let rec superscript (acc : string) (n : int) : string =
-        if n < 0 then "⁻" ^ superscript "" (-n)
-        else if n = 0 && acc = "" then "⁰"
-        else
-            match n with
-            | 0 -> acc
-            | n -> superscript
-                (
-                    List.nth superscript_list (n mod 10)
-                    |> (fun (s : string) : string -> s ^ acc)
-                )
-                (n / 10)
-    in
-    let factor_const (is_leading : bool) (is_constant : bool) (n : int) : string =
-        let plus_sign : string = if is_leading then "" else " + "
-        and minus_sign : string = if is_leading then "- " else " - "
-        and padding : string = if is_constant then "" else " "
-        in
-        let one_sign : string = if is_constant then "1" else ""
-        in
-        match n with
-        | 1 -> plus_sign ^ one_sign
-        | -1 -> minus_sign ^ one_sign
-        | n when n >= 0 -> plus_sign ^ string_of_int n ^ padding
-        | n -> minus_sign ^ string_of_int (-n) ^ padding
-    and factor_power (i : int) : string =
-        match i with
-        | 0 -> ""
-        | 1 -> "x"
-        | i -> "x" ^ superscript "" i
-    in
-    let rec izpis_aux (acc : string) (i : int) (p : polinom) : string =
-        match p with
-        | [] ->
-            if acc = "" then "0"
-            else acc
-        | hd :: tl -> izpis_aux
-            (
-                match hd with
-                | 0 -> acc
-                | n -> (factor_const (tl = []) (i = 0) n) ^ (factor_power i) ^ acc
-            )
-            (i + 1) tl
-    in
-    pocisti p
-    |> izpis_aux "" 0
+	let superscript_list : string list = ["⁰"; "¹"; "²"; "³"; "⁴"; "⁵"; "⁶"; "⁷"; "⁸"; "⁹"]
+	in
+	let rec superscript (acc : string) (n : int) : string =
+		if n < 0 then "⁻" ^ superscript "" (-n)
+		else if n = 0 && acc = "" then "⁰"
+		else
+			match n with
+			| 0 -> acc
+			| n -> superscript
+				(
+					List.nth superscript_list (n mod 10)
+					|> (fun (s : string) : string -> s ^ acc)
+				)
+				(n / 10)
+	in
+	let factor_const (is_leading : bool) (is_constant : bool) (n : int) : string =
+		let plus_sign : string = if is_leading then "" else " + "
+		and minus_sign : string = if is_leading then "- " else " - "
+		and padding : string = if is_constant then "" else " "
+		in
+		let one_sign : string = if is_constant then "1" else ""
+		in
+		match n with
+		| 1 -> plus_sign ^ one_sign
+		| -1 -> minus_sign ^ one_sign
+		| n when n >= 0 -> plus_sign ^ string_of_int n ^ padding
+		| n -> minus_sign ^ string_of_int (-n) ^ padding
+	and factor_power (i : int) : string =
+		match i with
+		| 0 -> ""
+		| 1 -> "x"
+		| i -> "x" ^ superscript "" i
+	in
+	let rec izpis_aux (acc : string) (i : int) (p : polinom) : string =
+		match p with
+		| [] ->
+			if acc = "" then "0"
+			else acc
+		| hd :: tl -> izpis_aux
+			(
+				match hd with
+				| 0 -> acc
+				| n -> (factor_const (tl = []) (i = 0) n) ^ (factor_power i) ^ acc
+			)
+			(i + 1) tl
+	in
+	pocisti p
+	|> izpis_aux "" 0
 
 # %%
 izpis [1; 2; 1]
@@ -448,11 +448,11 @@ izpis [1; 2; 0]
 
 # %%
 let priblizek_odvoda (f : float -> float) (x0 : float) (h : float) : float =
-    (f (x0 +. h) -. f x0) /. h
+	(f (x0 +. h) -. f x0) /. h
 
 # %%
 let f (x : float) : float =
-    sin x +. cos x +. exp x
+	sin x +. cos x +. exp x
 in
 List.map (priblizek_odvoda f 1.) [0.1; 0.01; 0.001; 0.0001; 0.00001]
 
@@ -467,10 +467,10 @@ let sinus : odvedljiva = (sin, cos)
 let kosinus : odvedljiva = (cos, (fun (x : float) : float -> -. sin x))
 let eksp : odvedljiva = (exp, exp)
 let ( ++. ) ((f, f') : odvedljiva) ((g, g') : odvedljiva) : odvedljiva =
-    (
-        (fun (x : float) : float -> f x +. g x),
-        (fun (x : float) : float -> f' x +. g' x)
-    )
+	(
+		(fun (x : float) : float -> f x +. g x),
+		(fun (x : float) : float -> f' x +. g' x)
+	)
 
 # %%
 let (_, f') : odvedljiva = sinus ++. kosinus ++. eksp
@@ -485,10 +485,10 @@ f' 1.
 
 # %%
 let vrednost ((f, _) : odvedljiva) (x0 : float) : float =
-    f x0
+	f x0
 
 let odvod ((_, f') : odvedljiva) (x0 : float) : float =
-    f' x0
+	f' x0
 
 # %% [markdown]
 # ### Osnovne funkcije
@@ -498,10 +498,10 @@ let odvod ((_, f') : odvedljiva) (x0 : float) : float =
 
 # %%
 let konstanta (c : float) : odvedljiva =
-    (
-        (fun (x : float) : float -> c),
-        (fun (x : float) : float -> 0.)
-    )
+	(
+		(fun (x : float) : float -> c),
+		(fun (x : float) : float -> 0.)
+	)
 
 let identiteta : odvedljiva = ((fun (x : float) : float -> x), (fun (x : float) : float -> 1.))
 
@@ -513,16 +513,16 @@ let identiteta : odvedljiva = ((fun (x : float) : float -> x), (fun (x : float) 
 
 # %%
 let ( **. ) ((f, f') : odvedljiva) ((g, g') : odvedljiva) : odvedljiva =
-    (
-        (fun (x : float) : float -> f x *. g x),
-        (fun (x : float) : float -> f' x *. g x +. f x *. g' x)
-    )
+	(
+		(fun (x : float) : float -> f x *. g x),
+		(fun (x : float) : float -> f' x *. g x +. f x *. g' x)
+	)
 
 let ( //. ) ((f, f') : odvedljiva) ((g, g') : odvedljiva) : odvedljiva =
-    (
-        (fun (x : float) : float -> f x /. g x),
-        (fun (x : float) : float -> (f' x *. g x -. f x *. g' x) /. (g x *. g x))
-    )
+	(
+		(fun (x : float) : float -> f x /. g x),
+		(fun (x : float) : float -> (f' x *. g x -. f x *. g' x) /. (g x *. g x))
+	)
 
 # %%
 let kvadrat : odvedljiva = identiteta **. identiteta
@@ -541,10 +541,10 @@ odvod kvadrat 7.
 
 # %%
 let ( @@. ) ((f, f') : odvedljiva) ((g, g') : odvedljiva) : odvedljiva =
-    (
-        (fun (x : float) : float -> f (g x)),
-        (fun (x : float) : float -> f' (g x) *. g' x)
-    )
+	(
+		(fun (x : float) : float -> f (g x)),
+		(fun (x : float) : float -> f' (g x) *. g' x)
+	)
 
 # %%
 let vedno_ena : odvedljiva = (kvadrat @@. sinus) ++. (kvadrat @@. kosinus)
@@ -577,22 +577,22 @@ let rot13 : string = "NOPQRSTUVWXYZABCDEFGHIJKLM"
 
 # %%
 let indeks (c :char) : int =
-    Char.code c - Char.code 'A'
+	Char.code c - Char.code 'A'
 
 let crka (i : int) : char =
-    Char.chr (i + Char.code 'A')
+	Char.chr (i + Char.code 'A')
 
 # %% [markdown]
 # Predno začnemo reševati pa lahko napišemo še par uporabnih funkcij `explode : string -> char list`, ki nam niz pretvori v seznam znakov in `implode : char list -> string`, ki je njen inverz. -Andrej Anžlovar
 
 # %%
 let explode (string : string) : char list =
-    String.to_seq string
-    |> List.of_seq
+	String.to_seq string
+	|> List.of_seq
 
 let implode (char_list : char list) : string =
-    List.to_seq char_list
-    |> String.of_seq
+	List.to_seq char_list
+	|> String.of_seq
 
 # %% [markdown]
 # ### Šifriranje
@@ -602,26 +602,26 @@ let implode (char_list : char list) : string =
 
 # %%
 let sifriraj (key : string) (string : string) : string =
-    let key_len : int = String.length key
-    in
-    let rec sifriraj_aux (acc : char list) (chars : char list) : char list =
-        match chars with
-        | [] -> acc
-        | hd :: tl -> sifriraj_aux
-            (
-                let i : int = indeks hd
-                in
-                (
-                    if 0 <= i && i < key_len then key.[i]
-                    else hd
-                ) :: acc
-            )
-            tl
-    in
-    explode string
-    |> sifriraj_aux []
-    |> List.rev
-    |> implode
+	let key_len : int = String.length key
+	in
+	let rec sifriraj_aux (acc : char list) (chars : char list) : char list =
+		match chars with
+		| [] -> acc
+		| hd :: tl -> sifriraj_aux
+			(
+				let i : int = indeks hd
+				in
+				(
+					if 0 <= i && i < key_len then key.[i]
+					else hd
+				) :: acc
+			)
+			tl
+	in
+	explode string
+	|> sifriraj_aux []
+	|> List.rev
+	|> implode
 
 # %%
 sifriraj quick_brown_fox "HELLO, WORLD!"
@@ -641,33 +641,33 @@ sifriraj quick_brown_fox "HELLO, WORLD!"
 # %%
 (* hitrejša in preprostejša implementacija za ključe brez lukenj *)
 let inverz_no_gaps (key : string) : string =
-    List.init (String.length key) crka
-    |> List.combine (explode key)
-    |> List.fast_sort (fun ((c1, _) : char * char) ((c2, _) : char * char) : int -> Char.code c1 - Char.code c2)
-    |> List.map (fun ((_, c) : char * char) : char -> c)
-    |> implode
+	List.init (String.length key) crka
+	|> List.combine (explode key)
+	|> List.fast_sort (fun ((c1, _) : char * char) ((c2, _) : char * char) : int -> Char.code c1 - Char.code c2)
+	|> List.map (fun ((_, c) : char * char) : char -> c)
+	|> implode
 
 let inverz (key : string) : string =
-    let rec index_of_char_opt (i : int) (c : char) (chars : char list) : int option =
-        match chars with
-        | [] -> None
-        | hd :: _ when hd = c -> Some i
-        | _ :: tl -> index_of_char_opt (i + 1) c tl
-    and key_chars : char list = explode key
-    in
-    let rec inverz_aux (acc : char list) (ci : int) : char list =
-        if String.length key <= ci then acc
-        else inverz_aux
-            (
-                match index_of_char_opt 0 (crka ci) key_chars with
-                | None -> '_' :: acc
-                | Some i -> (crka i) :: acc
-            )
-            (ci + 1)
-    in
-    inverz_aux [] 0
-    |> List.rev
-    |> implode
+	let rec index_of_char_opt (i : int) (c : char) (chars : char list) : int option =
+		match chars with
+		| [] -> None
+		| hd :: _ when hd = c -> Some i
+		| _ :: tl -> index_of_char_opt (i + 1) c tl
+	and key_chars : char list = explode key
+	in
+	let rec inverz_aux (acc : char list) (ci : int) : char list =
+		if String.length key <= ci then acc
+		else inverz_aux
+			(
+				match index_of_char_opt 0 (crka ci) key_chars with
+				| None -> '_' :: acc
+				| Some i -> (crka i) :: acc
+			)
+			(ci + 1)
+	in
+	inverz_aux [] 0
+	|> List.rev
+	|> implode
 
 # %%
 inverz quick_brown_fox
@@ -722,35 +722,35 @@ List.nth slovar 321
 
 # %%
 let dodaj_zamenjavo (partial_key : string) ((c1, c2) : char * char) : string option =
-    let rec contains (c : char) (chars : char list) : bool =
-        match chars with
-        | [] -> false
-        | hd :: _ when hd = c -> true
-        | _ :: tl -> contains c tl
-    and replace (acc : char list) (i : int) (c : char) (chars : char list) : string =
-        match chars with
-        | [] -> acc |> List.rev |> implode
-        | hd :: tl -> replace
-            (
-                (
-                    if i = 0 then c
-                    else hd
-                ) :: acc
-            )
-            (i - 1) c tl
-    and c1i : int = indeks c1
-    and key_chars : char list = explode partial_key
-    in
-    if c1i < 0 || String.length partial_key <= c1i then
-        if c1 = c2 then Some partial_key
-        else None
-    else
-        match partial_key.[c1i] with
-        | x when x = c2 -> Some partial_key
-        | '_' ->
-            if contains c2 key_chars then None
-            else Some (replace [] c1i c2 key_chars)
-        | _ -> None
+	let rec contains (c : char) (chars : char list) : bool =
+		match chars with
+		| [] -> false
+		| hd :: _ when hd = c -> true
+		| _ :: tl -> contains c tl
+	and replace (acc : char list) (i : int) (c : char) (chars : char list) : string =
+		match chars with
+		| [] -> acc |> List.rev |> implode
+		| hd :: tl -> replace
+			(
+				(
+					if i = 0 then c
+					else hd
+				) :: acc
+			)
+			(i - 1) c tl
+	and c1i : int = indeks c1
+	and key_chars : char list = explode partial_key
+	in
+	if c1i < 0 || String.length partial_key <= c1i then
+		if c1 = c2 then Some partial_key
+		else None
+	else
+		match partial_key.[c1i] with
+		| x when x = c2 -> Some partial_key
+		| '_' ->
+			if contains c2 key_chars then None
+			else Some (replace [] c1i c2 key_chars)
+		| _ -> None
 
 # %%
 dodaj_zamenjavo "AB__E" ('C', 'X')
@@ -769,23 +769,23 @@ dodaj_zamenjavo "ABY_E" ('C', 'E')
 
 # %%
 let dodaj_zamenjave (partial_key : string) ((string, encoded) : string * string) : string option =
-    if String.length string <> String.length encoded then None
-    else
-        let rec dodaj_zamenjave_aux (acc : string option) ((chars, encoded_chars) : char list * char list) : string option =
-            if acc = None then None
-            else
-                match chars, encoded_chars with
-                | [], [] -> acc
-                | ([], _ | _, []) -> None (* should not ever match this pattern *)
-                | hd1 :: tl1, hd2 :: tl2 -> dodaj_zamenjave_aux
-                    (
-                        match acc with
-                        | None -> None
-                        | Some key -> dodaj_zamenjavo key (hd1, hd2)
-                    )
-                    (tl1, tl2)
-        in
-        dodaj_zamenjave_aux (Some partial_key) ((explode string), (explode encoded))
+	if String.length string <> String.length encoded then None
+	else
+		let rec dodaj_zamenjave_aux (acc : string option) ((chars, encoded_chars) : char list * char list) : string option =
+			if acc = None then None
+			else
+				match chars, encoded_chars with
+				| [], [] -> acc
+				| ([], _ | _, []) -> None (* should not ever match this pattern *)
+				| hd1 :: tl1, hd2 :: tl2 -> dodaj_zamenjave_aux
+					(
+						match acc with
+						| None -> None
+						| Some key -> dodaj_zamenjavo key (hd1, hd2)
+					)
+					(tl1, tl2)
+		in
+		dodaj_zamenjave_aux (Some partial_key) ((explode string), (explode encoded))
 
 # %%
 dodaj_zamenjave "__________________________" ("HELLO", "KUNNJ")
@@ -804,19 +804,19 @@ dodaj_zamenjave "ABCDE_____________________" ("HELLO", "KUNNJ")
 
 # %%
 let mozne_razsiritve (partial_key : string) (encoded : string) (dictionary : string list) : string list =
-    let rec mozne_razsiritve_aux (acc : string list) (dictionary : string list) : string list =
-        match dictionary with
-        | [] -> acc
-        | hd :: tl -> mozne_razsiritve_aux
-            (
-                match dodaj_zamenjave partial_key (encoded, hd) with
-                | None -> acc
-                | Some key -> key :: acc
-            )
-            tl
-    in
-    mozne_razsiritve_aux [] dictionary
-    |> List.rev
+	let rec mozne_razsiritve_aux (acc : string list) (dictionary : string list) : string list =
+		match dictionary with
+		| [] -> acc
+		| hd :: tl -> mozne_razsiritve_aux
+			(
+				match dodaj_zamenjave partial_key (encoded, hd) with
+				| None -> acc
+				| Some key -> key :: acc
+			)
+			tl
+	in
+	mozne_razsiritve_aux [] dictionary
+	|> List.rev
 
 # %%
 slovar
@@ -831,24 +831,24 @@ slovar
 
 # %%
 let odsifriraj_all (string : string) : string list =
-    let rec odsifriraj_all_aux (encoded_words : string list) (partial_keys : string list) : string list =
-        match encoded_words with
-        | [] -> partial_keys
-        | hd :: tl -> odsifriraj_all_aux tl
-            (
-                let mozne_razsiritve_reorder (encoded : string) (dictionary : string list) (partial_key : string) : string list =
-                    mozne_razsiritve partial_key encoded dictionary
-                in
-                List.concat_map (mozne_razsiritve_reorder hd slovar) partial_keys
-            )
-    in
-    odsifriraj_all_aux (String.split_on_char ' ' string) [String.make 26 '_']
-    |> List.map (fun (key : string) : string -> sifriraj key string)
+	let rec odsifriraj_all_aux (encoded_words : string list) (partial_keys : string list) : string list =
+		match encoded_words with
+		| [] -> partial_keys
+		| hd :: tl -> odsifriraj_all_aux tl
+			(
+				let mozne_razsiritve_reorder (encoded : string) (dictionary : string list) (partial_key : string) : string list =
+					mozne_razsiritve partial_key encoded dictionary
+				in
+				List.concat_map (mozne_razsiritve_reorder hd slovar) partial_keys
+			)
+	in
+	odsifriraj_all_aux (String.split_on_char ' ' string) [String.make 26 '_']
+	|> List.map (fun (key : string) : string -> sifriraj key string)
 
 let odsifriraj (string : string) : string option =
-    match odsifriraj_all string with
-    | [] -> None
-    | hd :: _ -> Some hd
+	match odsifriraj_all string with
+	| [] -> None
+	| hd :: _ -> Some hd
 
 # %%
 sifriraj quick_brown_fox "THIS IS A VERY HARD PROBLEM"
