@@ -89,11 +89,12 @@ def glava {A : Type} {n : Nat} : Vektor A (n + 1) → A :=
 #eval glava empty_nat_vec
 #eval glava test_nat_vec
 
-def rep {A : Type} {n : Nat} : Vektor A (n + 1) → A :=
+def rep {A : Type} {n : Nat} : Vektor A (n + 1) → Vektor A n :=
     fun xs =>
-        glava (obrni xs)
+        match xs with
+        | Vektor.sestavljen _ xs' => xs'
 
--- Funkcija rep se pravilno pritoži nad praznim seznamom in vrne zadnji element sestavljenega
+-- Funkcija rep se pravilno pritoži nad praznim seznamom in vrne rep sestavljenega
 #eval rep empty_nat_vec
 #eval rep test_nat_vec
 
