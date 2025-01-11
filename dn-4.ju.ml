@@ -64,7 +64,8 @@ module Tape : TAPE =
                 right : char list
             }
 
-        let empty_tape : t = { left = []; head = ' '; right = [] }
+        let empty_tape : t =
+            { left = []; head = ' '; right = [] }
 
         let make (s : string) : t =
             let str_to_list (s : string) : char list =
@@ -91,9 +92,11 @@ module Tape : TAPE =
             | [] -> order ' ' ([], tape.head :: other_chars)
             | hd' :: dir_chars' -> order hd' (dir_chars', trim_others other_chars)
 
-        let read (tape : t) : char = tape.head
+        let read (tape : t) : char =
+            tape.head
 
-        let write (c : char) (tape : t) : t = { tape with head = c }
+        let write (c : char) (tape : t) : t =
+            { tape with head = c }
 
         let print (tape : t) : unit =
             List.iter print_char (List.rev tape.left);
@@ -148,21 +151,26 @@ let primer_trak_dodatno : unit =
 # Tudi tu je tip `t` abstrakten, zato poskrbite za učinkovitost in preglednost kode.
 
 # %%
+type instruction = state * char * direction
+
 (*module OrderedState : Map.OrderedType =*)
 (*    struct*)
 (*        type t = state*)
-(*        let compare (s1 : state) (s2 : state) : int = String.compare s1 s2*)
+(*        let compare (s1 : state) (s2 : state) : int =*)
+(*            String.compare s1 s2*)
 (*    end*)
 (**)
 (*module OrderedChar : Map.OrderedType =*)
 (*    struct*)
 (*        type t = char*)
-(*        let compare (c1 : char) (c2 : char) : int = Char.compare c1 c2*)
+(*        let compare (c1 : char) (c2 : char) : int =*)
+(*            Char.compare c1 c2*)
 (*    end*)
 
 module StateMap : (Map.S with type key = state) = Map.Make(String)
 module CharMap : (Map.S with type key = char) = Map.Make(Char)
 
+# %%
 module type MACHINE =
     sig
         type t
@@ -178,7 +186,7 @@ module Machine : MACHINE =
         type t =
             {
                 initial : state;
-                transition : ((state * char * direction) CharMap.t) StateMap.t;
+                transition_map : (instruction CharMap.t) StateMap.t;
             }
 
         let make (initial : state) (state_list : state list) : t =
@@ -187,10 +195,11 @@ module Machine : MACHINE =
             in
             {
                 initial = initial;
-                transition = List.fold_left map_add StateMap.empty (initial :: state_list)
+                transition_map = List.fold_left map_add StateMap.empty (initial :: state_list)
             }
 
-        let initial (machine : t) : state = machine.initial
+        let initial (machine : t) : state =
+            machine.initial
 
         let add_transition (st : state) (c : char) (st' : state) (c' : char) (dir : direction) (machine : t) : t =
             let char_map_add (char_map_opt : 'a CharMap.t option) : 'a CharMap.t option =
@@ -198,7 +207,7 @@ module Machine : MACHINE =
                 | None -> None
                 | Some char_map -> Some (CharMap.add c (st', c', dir) char_map)
             in
-            { machine with transition = StateMap.update st char_map_add machine.transition }
+            { machine with transition_map = StateMap.update st char_map_add machine.transition_map }
 
         let step (machine : t) (st : state) (tape : Tape.t) : (state * Tape.t) option =
             let opt_wrapper : type a b. (a -> b option) -> a option -> b option =
@@ -206,10 +215,10 @@ module Machine : MACHINE =
                     match x_opt with
                     | None -> None
                     | Some x -> f x
-            and execute_step ((st', c', dir) : state * char * direction) : (state * Tape.t) option =
+            and execute_step ((st', c', dir) : instruction) : (state * Tape.t) option =
                 Some (st', Tape.write c' tape |> Tape.move dir)
             in
-            StateMap.find_opt st machine.transition
+            StateMap.find_opt st machine.transition_map
             |> opt_wrapper (CharMap.find_opt (Tape.read tape))
             |> opt_wrapper execute_step
     end
@@ -233,27 +242,28 @@ let binary_increment : Machine.t =
 # Zapišite funkciji `slow_run` in `speed_run` tipa `Machine.t -> str -> unit`, ki simulirata Turingov stroj na traku, na katerem je na začetku zapisan dani niz. Prva naj izpiše trakove in stanja pri vseh vmesnih korakih, druga pa naj izpiše le končni trak. Slednjo bomo uporabljali tudi pri meritvi učinkovitosti izvajanja.
 
 # %%
-let run (f : state -> Tape.t -> unit) (machine : Machine.t) (s : string) : unit =
-    let rec run_aux (instructions_opt : (state * Tape.t) option) : unit =
-        match instructions_opt with
-        | None -> ()
-        | Some (st, tape) ->
-            f st tape;
-            run_aux (Machine.step machine st tape)
-    in
-    Some (Machine.initial machine, Tape.make s)
-    |> run_aux
-
 let slow_run (machine : Machine.t) (s : string) : unit =
     let output (st : state) (tape : Tape.t) : unit =
         Tape.print tape;
         print_endline st;
         print_newline ()
     in
-    run output machine s
+    let rec slow_run_aux ((st, tape) : state * Tape.t) : unit =
+        match Machine.step machine st tape with
+        | None -> output st tape
+        | Some (st', tape') ->
+            output st tape;
+            slow_run_aux (st', tape')
+    in
+    slow_run_aux (Machine.initial machine, Tape.make s)
 
 let speed_run (machine : Machine.t) (s : string) : unit =
-    run (fun _ _ : unit -> ()) machine s
+    let rec speed_run_aux ((st, tape) : state * Tape.t) : unit =
+        match Machine.step machine st tape with
+        | None -> Tape.print tape
+        | Some (st', tape') -> speed_run_aux (st', tape')
+    in
+    speed_run_aux (Machine.initial machine, Tape.make s)
 
 # %%
 let primer_slow_run : unit =
@@ -268,7 +278,7 @@ let primer_speed_run : unit =
 
 # %% [markdown]
 # Ko definiramo Turingov stroj, prehode običajno združujemo najprej po stanjih, nato pa še po znakih. Prav tako pri dosti prehodih samo premikamo glavo, trak in stanje pa pustimo pri miru. Zapišite funkcije:
-#
+
 # - `for_state`
 # - `for_character`
 # - `for_characters`
@@ -280,16 +290,65 @@ let primer_speed_run : unit =
 # s katerimi bi lahko zgornji primer na krajše zapisali kot spodaj. Implementacijo in tipe ugotovite sami.
 
 # %%
-let binary_increment' =
+type state_transform = state -> Machine.t -> Machine.t
+type char_state_transform = char -> state_transform
+
+let for_state (st : state) (trans_list : state_transform list list) (machine : Machine.t) : Machine.t =
+        List.flatten trans_list
+        |> List.fold_left
+            (
+                fun (machine : Machine.t) (trans : state_transform) : Machine.t ->
+                trans st machine
+            )
+            machine
+
+let for_character (c : char) (trans : char_state_transform) : state_transform list =
+    [trans c]
+
+let for_characters (s : string) (trans : char_state_transform) : state_transform list =
+    let str_to_list (s : string) : char list =
+        List.init (String.length s) (String.get s)
+    in
+    str_to_list s
+    |> List.map trans
+
+let move (dir : direction) : char_state_transform =
+    fun (c : char) (st : state) (machine : Machine.t) : Machine.t ->
+        Machine.add_transition st c st c dir machine
+
+let switch_and_move (st' : state) (dir : direction) : char_state_transform =
+    fun (c : char) (st : state) (machine : Machine.t) : Machine.t ->
+        Machine.add_transition st c st' c dir machine
+
+let write_and_move (c' : char) (dir : direction) : char_state_transform =
+    fun (c : char) (st : state) (machine : Machine.t) : Machine.t ->
+        Machine.add_transition st c st c' dir machine
+
+let write_switch_and_move (c' : char) (st' : state) (dir : direction) : char_state_transform =
+    fun (c : char) (st : state) (machine : Machine.t) : Machine.t ->
+        Machine.add_transition st c st' c' dir machine
+
+# %%
+let binary_increment' : Machine.t =
     Machine.make "right" ["carry"; "done"]
-    |> for_state "right" [
-        for_characters "01" @@ move Right;
-        for_character ' ' @@ switch_and_move "carry" Left
-    ]
-    |> for_state "carry" [
-        for_character '1' @@ switch_and_move "carry" Left;
-        for_characters "0 " @@ write_switch_and_move '1' "done" Left
-    ]
+    |> for_state "right"
+        [
+            for_characters "01" @@ move Right;
+            for_character ' ' @@ switch_and_move "carry" Left
+        ]
+    |> for_state "carry"
+        [
+            for_character '1' @@ write_switch_and_move '0' "carry" Left;
+            for_characters "0 " @@ write_switch_and_move '1' "done" Left
+        ]
+
+# %%
+let primer_krajse_dodatno_1 : unit =
+    slow_run binary_increment' "1011"
+
+# %%
+let primer_krajse_dodatno_2 : unit =
+    speed_run binary_increment' "1011"
 
 # %% [markdown]
 # ## Primeri Turingovih strojev
@@ -305,7 +364,43 @@ let binary_increment' =
 # Sestavite Turingov stroj, ki začetni niz obrne na glavo.
 
 # %%
-let primer_reverse = speed_run reverse "0000111001"
+let reverse : Machine.t =
+    Machine.make "start" ["copy"; "write_zero"; "write_one"; "to_exclamation"; "clear"]
+    |> for_state "start"
+        [
+            for_characters "01" @@ move Right;
+            for_character ' ' @@ write_switch_and_move '!' "copy" Left
+        ]
+    |> for_state "copy"
+        [
+            for_character '!' @@ move Left;
+            for_character '0' @@ write_switch_and_move '!' "write_zero" Right;
+            for_character '1' @@ write_switch_and_move '!' "write_one" Right;
+            for_character ' ' @@ switch_and_move "clear" Right
+        ]
+    |> for_state "write_zero"
+        [
+            for_characters "!01" @@ move Right;
+            for_character ' ' @@ write_switch_and_move '0' "to_exclamation" Left
+        ]
+    |> for_state "write_one"
+        [
+            for_characters "!01" @@ move Right;
+            for_character ' ' @@ write_switch_and_move '1' "to_exclamation" Left
+        ]
+    |> for_state "to_exclamation"
+        [
+            for_characters "01" @@ move Left;
+            for_character '!' @@ switch_and_move "copy" Left
+        ]
+    |> for_state "clear"
+        [
+            for_character '!' @@ write_and_move ' ' Right
+        ]
+
+# %%
+let primer_reverse =
+    speed_run reverse "0000111001"
 
 # %% [markdown]
 # ### Podvajanje niza
@@ -315,7 +410,8 @@ let primer_reverse = speed_run reverse "0000111001"
 # Sestavite Turingov stroj, ki podvoji začetni niz.
 
 # %%
-let primer_duplicate = speed_run duplicate "010011"
+let primer_duplicate =
+    speed_run duplicate "010011"
 
 # %% [markdown]
 # ### Eniški zapis
@@ -325,7 +421,8 @@ let primer_duplicate = speed_run duplicate "010011"
 # Sestavite Turingov stroj, ki na začetku na traku sprejme število $n$, zapisano v dvojiškem zapisu, na koncu pa naj bo na traku zapisanih natanko $n$ enic.
 
 # %%
-let primer_to_unary = speed_run to_unary "1010"
+let primer_to_unary =
+    speed_run to_unary "1010"
 
 # %% [markdown]
 # ### Dvojiški zapis
@@ -335,5 +432,6 @@ let primer_to_unary = speed_run to_unary "1010"
 # Sestavite ravno obratni Turingov stroj, torej tak, ki na začetku na traku sprejme število $n$ enic, na koncu pa naj bo na traku zapisano število $n$ v dvojiškem zapisu.
 
 # %%
-let primer_to_binary = speed_run to_binary (String.make 42 '1')
+let primer_to_binary =
+    speed_run to_binary (String.make 42 '1')
 
