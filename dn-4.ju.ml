@@ -89,7 +89,7 @@ module Tape : TAPE =
                 | Right -> (tape.right, tape.left)
             in
             match dir_chars with
-            | [] -> order ' ' ([], tape.head :: other_chars)
+            | [] -> order ' ' ([], trim_others other_chars)
             | hd' :: dir_chars' -> order hd' (dir_chars', trim_others other_chars)
 
         let read (tape : t) : char =
@@ -179,6 +179,8 @@ module type MACHINE =
         val initial : t -> state
         val add_transition : state -> char -> state -> char -> direction -> t -> t
         val step : t -> state -> Tape.t -> (state * Tape.t) option
+
+        val bindings : t -> (StateMap.key * (CharMap.key * instruction) list) list
     end
 
 module Machine : MACHINE =
@@ -221,6 +223,9 @@ module Machine : MACHINE =
             StateMap.find_opt st machine.transition_map
             |> opt_wrapper (CharMap.find_opt (Tape.read tape))
             |> opt_wrapper execute_step
+
+        let bindings machine =
+            List.map (fun (k, v) -> (k, CharMap.bindings v)) (StateMap.bindings machine.transition_map)
     end
 
 # %% [markdown]
@@ -365,49 +370,81 @@ let primer_krajse_dodatno_2 : unit =
 
 # %%
 let reverse : Machine.t =
-    Machine.make "start" ["copy"; "write_zero"; "write_one"; "to_exclamation"; "clear"]
-    |> for_state "start"
+    Machine.make "rename" ["copy"; "write_zero"; "write_one"; "clear"]
+    |> for_state "rename"
         [
-            for_characters "01" @@ move Right;
-            for_character ' ' @@ write_switch_and_move '!' "copy" Left
+            for_character '0' @@ write_and_move 'A' Right;
+            for_character '1' @@ write_and_move 'B' Right;
+            for_character ' ' @@ switch_and_move "copy" Left
         ]
     |> for_state "copy"
         [
-            for_character '!' @@ move Left;
-            for_character '0' @@ write_switch_and_move '!' "write_zero" Right;
-            for_character '1' @@ write_switch_and_move '!' "write_one" Right;
+            for_characters "_01" @@ move Left;
+            for_character 'A' @@ write_switch_and_move '_' "write_zero" Right;
+            for_character 'B' @@ write_switch_and_move '_' "write_one" Right;
             for_character ' ' @@ switch_and_move "clear" Right
         ]
     |> for_state "write_zero"
         [
-            for_characters "!01" @@ move Right;
-            for_character ' ' @@ write_switch_and_move '0' "to_exclamation" Left
+            for_characters "_01" @@ move Right;
+            for_character ' ' @@ write_switch_and_move '0' "copy" Left
         ]
     |> for_state "write_one"
         [
-            for_characters "!01" @@ move Right;
-            for_character ' ' @@ write_switch_and_move '1' "to_exclamation" Left
-        ]
-    |> for_state "to_exclamation"
-        [
-            for_characters "01" @@ move Left;
-            for_character '!' @@ switch_and_move "copy" Left
+            for_characters "_01" @@ move Right;
+            for_character ' ' @@ write_switch_and_move '1' "copy" Left
         ]
     |> for_state "clear"
         [
-            for_character '!' @@ write_and_move ' ' Right
+            for_character '_' @@ write_and_move ' ' Right
         ]
 
 # %%
-let primer_reverse =
+let primer_reverse : unit =
     speed_run reverse "0000111001"
+
+# %%
+let primer_reverse_dodatno : unit =
+    speed_run reverse ""
 
 # %% [markdown]
 # ### Podvajanje niza
-#
 
 # %% [markdown]
 # Sestavite Turingov stroj, ki podvoji začetni niz.
+
+# %%
+let duplicate : Machine.t =
+    Machine.make "rename" ["mark"; "copy"; "write_zero"; "write_one"; "return"]
+    |> for_state "rename"
+        [
+            for_character '0' @@ write_and_move 'A' Right;
+            for_character '1' @@ write_and_move 'B' Right;
+            for_character ' ' @@ switch_and_move "copy" Left
+        ]
+    |> for_state "copy"
+        [
+            for_character 'A' @@ write_switch_and_move 'X' "write_zero" Left;
+            for_character 'B' @@ write_switch_and_move 'Y' "write_one" Left;
+            for_characters "01" @@ move Left;
+            for_character ' ' @@ switch_and_move "end" Right
+        ]
+    |> for_state "write_zero"
+        [
+            for_characters "01AB" @@ move Left;
+            for_character ' ' @@ write_switch_and_move '0' "return" Right;
+        ]
+    |> for_state "write_one"
+        [
+            for_characters "01AB" @@ move Left;
+            for_character ' ' @@ write_switch_and_move '1' "return" Right;
+        ]
+    |> for_state "return"
+        [
+            for_characters "01AB" @@ move Right;
+            for_character 'X' @@ write_switch_and_move '0' "copy" Left;
+            for_character 'Y' @@ write_switch_and_move '1' "copy" Left
+        ]
 
 # %%
 let primer_duplicate =
@@ -421,8 +458,38 @@ let primer_duplicate =
 # Sestavite Turingov stroj, ki na začetku na traku sprejme število $n$, zapisano v dvojiškem zapisu, na koncu pa naj bo na traku zapisanih natanko $n$ enic.
 
 # %%
-let primer_to_unary =
+let to_unary : Machine.t =
+    Machine.make "rename" ["subtract"; "add"; "clear"]
+    |> for_state "rename"
+        [
+            for_character '0' @@ write_and_move 'A' Right;
+            for_character '1' @@ write_and_move 'B' Right;
+            for_character ' ' @@ switch_and_move "subtract" Left
+        ]
+    |> for_state "subtract"
+        [
+            for_character 'A' @@ write_and_move 'B' Left;
+            for_character 'B' @@ write_switch_and_move 'A' "add" Right;
+            for_character '1' @@ move Left;
+            for_character ' ' @@ switch_and_move "clear" Right
+        ]
+    |> for_state "add"
+        [
+            for_characters "1AB" @@ move Right;
+            for_character ' ' @@ write_switch_and_move '1' "subtract" Left
+        ]
+    |> for_state "clear"
+        [
+            for_character 'B' @@ write_and_move ' ' Right
+        ]
+
+# %%
+let primer_to_unary : unit =
     speed_run to_unary "1010"
+
+# %%
+let primer_to_unary_dodatno : unit =
+    speed_run to_unary "0"
 
 # %% [markdown]
 # ### Dvojiški zapis
@@ -432,6 +499,41 @@ let primer_to_unary =
 # Sestavite ravno obratni Turingov stroj, torej tak, ki na začetku na traku sprejme število $n$ enic, na koncu pa naj bo na traku zapisano število $n$ v dvojiškem zapisu.
 
 # %%
-let primer_to_binary =
+let to_binary : Machine.t =
+    Machine.make "rename" ["return"; "subtract"; "add"; "clear"]
+    |> for_state "rename"
+        [
+            for_character '1' @@ write_and_move 'A' Right;
+            for_character ' ' @@ switch_and_move "return" Left
+        ]
+    |> for_state "return"
+        [
+            for_character 'A' @@ move Left;
+            for_character ' ' @@ switch_and_move "subtract" Right;
+        ]
+    |> for_state "subtract"
+        [
+            for_character 'A' @@ write_switch_and_move '_' "add" Left;
+            for_characters "_01" @@ move Right;
+            for_character ' ' @@ switch_and_move "clear" Left
+        ]
+    |> for_state "add"
+        [
+            for_character '_' @@ move Left;
+            for_characters " 0" @@ write_switch_and_move '1' "subtract" Right;
+            for_character '1' @@ write_and_move '0' Left
+        ]
+    |> for_state "clear"
+        [
+            for_character '_' @@ write_and_move ' ' Left;
+            for_characters "01" @@ move Left;
+            for_character ' ' @@ switch_and_move "end" Right;
+        ]
+
+# %%
+let primer_to_binary : unit =
     speed_run to_binary (String.make 42 '1')
 
+# %%
+let primer_to_binary_dodatno : unit =
+    speed_run to_binary "1"
