@@ -153,22 +153,17 @@ let primer_trak_dodatno : unit =
 # %%
 type instruction = state * char * direction
 
-(*module OrderedState : Map.OrderedType =*)
-(*    struct*)
-(*        type t = state*)
-(*        let compare (s1 : state) (s2 : state) : int =*)
-(*            String.compare s1 s2*)
-(*    end*)
-(**)
-(*module OrderedChar : Map.OrderedType =*)
-(*    struct*)
-(*        type t = char*)
-(*        let compare (c1 : char) (c2 : char) : int =*)
-(*            Char.compare c1 c2*)
-(*    end*)
+module StateCharMap : (Map.S with type key = state * char) =
+    Map.Make(
+        struct
+            type t = state * char
 
-module StateMap : (Map.S with type key = state) = Map.Make(String)
-module CharMap : (Map.S with type key = char) = Map.Make(Char)
+            let compare ((st1, c1) : t) ((st2, c2) : t) : int =
+                match String.compare st1 st2 with
+                | 0 -> Char.compare c1 c2
+                | c -> c
+        end
+    )
 
 # %%
 module type MACHINE =
@@ -179,8 +174,6 @@ module type MACHINE =
         val initial : t -> state
         val add_transition : state -> char -> state -> char -> direction -> t -> t
         val step : t -> state -> Tape.t -> (state * Tape.t) option
-
-        val bindings : t -> (StateMap.key * (CharMap.key * instruction) list) list
     end
 
 module Machine : MACHINE =
@@ -188,44 +181,31 @@ module Machine : MACHINE =
         type t =
             {
                 initial : state;
-                transition_map : (instruction CharMap.t) StateMap.t;
+                transition_map : instruction StateCharMap.t;
             }
 
         let make (initial : state) (state_list : state list) : t =
-            let map_add (map : ('a CharMap.t) StateMap.t) (key : state) : ('a CharMap.t) StateMap.t =
-                StateMap.add key (CharMap.empty) map
-            in
             {
                 initial = initial;
-                transition_map = List.fold_left map_add StateMap.empty (initial :: state_list)
+                transition_map = StateCharMap.empty
             }
 
         let initial (machine : t) : state =
             machine.initial
 
         let add_transition (st : state) (c : char) (st' : state) (c' : char) (dir : direction) (machine : t) : t =
-            let char_map_add (char_map_opt : 'a CharMap.t option) : 'a CharMap.t option =
-                match char_map_opt with
-                | None -> None
-                | Some char_map -> Some (CharMap.add c (st', c', dir) char_map)
-            in
-            { machine with transition_map = StateMap.update st char_map_add machine.transition_map }
+            { machine with transition_map = StateCharMap.add (st, c) (st', c', dir) machine.transition_map }
 
         let step (machine : t) (st : state) (tape : Tape.t) : (state * Tape.t) option =
-            let opt_wrapper : type a b. (a -> b option) -> a option -> b option =
-                fun (f : a -> b option) (x_opt : a option) : b option ->
-                    match x_opt with
-                    | None -> None
-                    | Some x -> f x
-            and execute_step ((st', c', dir) : instruction) : (state * Tape.t) option =
-                Some (st', Tape.write c' tape |> Tape.move dir)
+            let opt_wrapper (f : ('a -> 'b)) (x_opt : 'a option) : 'b option =
+                match x_opt with
+                | None -> None
+                | Some x -> Some (f x)
+            and execute_step ((st', c', dir) : instruction) : state * Tape.t =
+                (st', Tape.write c' tape |> Tape.move dir)
             in
-            StateMap.find_opt st machine.transition_map
-            |> opt_wrapper (CharMap.find_opt (Tape.read tape))
+            StateCharMap.find_opt (st, Tape.read tape) machine.transition_map
             |> opt_wrapper execute_step
-
-        let bindings machine =
-            List.map (fun (k, v) -> (k, CharMap.bindings v)) (StateMap.bindings machine.transition_map)
     end
 
 # %% [markdown]
