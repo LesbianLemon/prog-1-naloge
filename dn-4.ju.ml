@@ -40,6 +40,7 @@ module type TAPE =
         val print : t -> unit
     end
 
+# %%
 module Tape : TAPE =
     struct
         (* Choosing the correct type has an impact on time efficiency. We can limit ourselves as follows: *)
@@ -56,7 +57,6 @@ module Tape : TAPE =
         (* Idea: Store the head seperately for easy reading and writing and have lists of characters to the *)
         (* left and right with the first character being the one next to the head *)
 
-        (*type t = char list * char * char list*)
         type t =
             {
                 left : char list;
@@ -151,21 +151,6 @@ let primer_trak_dodatno : unit =
 # Tudi tu je tip `t` abstrakten, zato poskrbite za učinkovitost in preglednost kode.
 
 # %%
-type instruction = state * char * direction
-
-module StateCharMap : (Map.S with type key = state * char) =
-    Map.Make(
-        struct
-            type t = state * char
-
-            let compare ((st1, c1) : t) ((st2, c2) : t) : int =
-                match String.compare st1 st2 with
-                | 0 -> Char.compare c1 c2
-                | c -> c
-        end
-    )
-
-# %%
 module type MACHINE =
     sig
         type t
@@ -176,17 +161,54 @@ module type MACHINE =
         val step : t -> state -> Tape.t -> (state * Tape.t) option
     end
 
+# %%
+module type MACHINE_EXTRA =
+    sig
+        type t
+
+        val make : state -> state list -> t
+        val initial : t -> state
+        val add_transition : state -> char -> state -> char -> direction -> t -> t
+        val step : t -> state -> Tape.t -> (state * Tape.t) option
+
+        (* Extra exposed values enabling faster Machine execution *)
+
+        type state_id
+
+        val initial_id : t -> state_id
+        val setup : t -> t
+        val speed_step : t -> state_id -> Tape.t -> (state_id * Tape.t) option
+    end
+
+# %%
+(* WARNING!!! *)
+(* This implementation is only for showcasing a simpler but slightly less efficient solution. *)
+(* Most of the time this would be more than fast enough and due to its much cleaner code and readability it might be the superior option. *)
+(* Nontheless it is incompatible with the current implementation of `slow_run` and `speed_run` *)
 module Machine : MACHINE =
     struct
+        (* Turing Machine implementation using binary search trees for representing the transition function: *)
+
+        (* -`make` function sets saves the inital state and given states and sets up an empty transition map - O(1) *)
+        (* -`initial` function just returns the stored initial state - O(1) *)
+        (* -`add_transition` function adds a mapping to the transition map - O(log n) *)
+        (* -`step` function returns the resulting next state and tape calculated from the given current state and tape. *)
+        (*        operations on the tape are executed in O(1) time and searching the transition map takes O(log n) - O(log n) *)
+
+        (* This implementation is easy to use and is relatively efficient, but making the `step` function O(1) is more important than *)
+        (* optimizing `make` and `add_transition`. Therefore other solutions can yield better results. *)
+
         type t =
             {
                 initial : state;
-                transition_map : instruction StateCharMap.t;
+                state_list : state list;
+                transition_map : instruction StateCharMap.t
             }
 
         let make (initial : state) (state_list : state list) : t =
             {
                 initial = initial;
+                state_list = initial :: state_list;
                 transition_map = StateCharMap.empty
             }
 
@@ -206,6 +228,149 @@ module Machine : MACHINE =
             in
             StateCharMap.find_opt (st, Tape.read tape) machine.transition_map
             |> opt_wrapper execute_step
+    end
+
+# %%
+module Machine : MACHINE_EXTRA =
+    struct
+        (* Turing Machine implementation using two dimensional array for representing the transition function: *)
+
+        (* -`make` function sets saves the inital values and converts the necessary structures - O(n) *)
+        (* -`initial` function just returns the stored initial state - O(1) *)
+        (* -`initial_id` function just returns the stored initial state id - O(1) *)
+        (* -`add_transition` function adds a mapping to the transition stack and does so in constant time due to hashtable lookup - O(1) *)
+        (* -`setup` function prepares the Machine for use of the `step` and `speed_step` functions - O(n) *)
+        (* -`step` function returns the resulting next state and tape calculated from the given current state and tape. *)
+        (*         operations on the tape are executed in O(1) time and searching the transition matrix takes O(1) - O(1) *)
+        (* -`speed_step` function is a faster implementation of the `step` function which accepts and returns state ids directly, *)
+        (*         avoiding having to use lookup tables at all *)
+
+        (* By performing a trick where we keep the transition matrix empty until we call the `setup` function, we gain a O(1) `step` function. *)
+        (* Even though arrays are mutable, we only copy and empty array each time we need to reutrn a new machine, keeping the old machine intact. *)
+        (* This requires calling the `setup` function before being able to use `step`. *)
+
+        (* We can also keep some of the values stored in a mutable structure due to the way Machine is implemented. *)
+        (* Storing the states in an array and having a state id lookup table as a hashtable (both mutable types) can not cause problems with changing previous machines. *)
+        (* This is due to not being able to change add or remove any states after passing them to the `make` function. *)
+        (* Meaning that machines that are returned will always have the same defined states as the original, even if the transition function is different. *)
+
+        (* Lastly defining two new types for storing the id of states (their index in the matrix) and instructions with a valid undefined state allow for easier macthing. *)
+
+        type state_id =
+            | EndState of state
+            | State of int
+
+        type instruction =
+            | Undefined
+            | Instruction of state_id * char * direction
+
+        type t =
+            {
+                initial_state : state;
+                initial_id : state_id;
+
+                state_array : state array;
+                state_id_lookup : (state, int) Hashtbl.t;
+                state_amount : int;
+
+                transition_stack : ((int * int) * instruction) list;
+                transition_matrix : instruction array array;
+
+                is_setup : bool
+            }
+
+        let make (initial_st : state) (st_list : state list) : t =
+            let st_list' : state list = initial_st :: st_list
+            in
+            let st_list_len : int = List.length st_list'
+            in
+            let id_lookup : (state, int) Hashtbl.t = Hashtbl.create st_list_len
+            in
+            List.iteri (fun (i : int) (st : state) -> Hashtbl.add id_lookup st i) st_list';
+            {
+                initial_state = initial_st;
+                initial_id = State (Hashtbl.find id_lookup initial_st);
+
+                state_array = Array.of_list st_list';
+                state_id_lookup = id_lookup;
+                state_amount = st_list_len;
+
+                transition_stack = [];
+                transition_matrix = [||];
+
+                is_setup = false
+            }
+
+        let initial (machine : t) : state =
+            machine.initial_state
+
+        let initial_id (machine : t) : state_id =
+            machine.initial_id
+
+        let add_transition (st : state) (c : char) (st' : state) (c' : char) (dir : direction) (machine : t) : t =
+            match Hashtbl.find_opt machine.state_id_lookup st with
+            | None -> { machine with transition_matrix = [||]; is_setup = false }
+            | Some id ->
+                let inst : instruction =
+                    match Hashtbl.find_opt machine.state_id_lookup st' with
+                    | None -> Instruction (EndState st', c', dir)
+                    | Some id' -> Instruction (State id', c', dir)
+                in
+                {
+                    machine with
+                    transition_stack = ((id, Char.code c), inst) :: machine.transition_stack;
+                    transition_matrix = [||];
+
+                    is_setup = false
+                }
+
+        let setup (machine : t) : t =
+            let machine' : t =
+                {
+                    machine with
+                    transition_matrix =
+                        Array.init machine.state_amount (fun (i : int) : instruction array -> Array.make 256 Undefined);
+
+                    is_setup = true
+                }
+            in
+            let rec setup_aux (stack : ((int * int) * instruction) list) : t =
+                match stack with
+                | [] -> machine'
+                | ((i, j), inst) :: tl ->
+                   machine'.transition_matrix.(i).(j) <- inst;
+                    setup_aux tl
+            in
+            setup_aux machine'.transition_stack
+
+        let step (machine : t) (st : state) (tape : Tape.t) : (state * Tape.t) option =
+            let get_state (st_id : state_id) : state =
+                match st_id with
+                | EndState st' -> st'
+                | State id -> machine.state_array.(id)
+            in
+            let execute_step (inst : instruction) : (state * Tape.t) option =
+                match inst with
+                | Undefined -> None
+                | Instruction (st_id', c', dir) -> Some (get_state st_id', Tape.write c' tape |> Tape.move dir)
+            in
+            match Hashtbl.find_opt machine.state_id_lookup st with
+            | None -> None
+            | Some id ->
+                machine.transition_matrix.(id).(Tape.read tape |> Char.code)
+                |> execute_step
+
+        let speed_step (machine : t) (st_id : state_id) (tape : Tape.t) : (state_id * Tape.t) option =
+            let execute_step (inst : instruction) : (state_id * Tape.t) option =
+                match inst with
+                | Undefined -> None
+                | Instruction (st_id', c', dir) -> Some (st_id', Tape.write c' tape |> Tape.move dir)
+            in
+            match st_id with
+            | EndState _ -> None
+            | State id ->
+                machine.transition_matrix.(id).(Tape.read tape |> Char.code)
+                |> execute_step
     end
 
 # %% [markdown]
@@ -228,27 +393,32 @@ let binary_increment : Machine.t =
 
 # %%
 let slow_run (machine : Machine.t) (s : string) : unit =
+    let machine' : Machine.t = Machine.setup machine
+    in
     let output (st : state) (tape : Tape.t) : unit =
         Tape.print tape;
         print_endline st;
         print_newline ()
     in
     let rec slow_run_aux ((st, tape) : state * Tape.t) : unit =
-        match Machine.step machine st tape with
+        match Machine.step machine' st tape with
         | None -> output st tape
         | Some (st', tape') ->
             output st tape;
             slow_run_aux (st', tape')
     in
-    slow_run_aux (Machine.initial machine, Tape.make s)
+    slow_run_aux (Machine.initial machine', Tape.make s)
 
+# %%
 let speed_run (machine : Machine.t) (s : string) : unit =
-    let rec speed_run_aux ((st, tape) : state * Tape.t) : unit =
-        match Machine.step machine st tape with
-        | None -> Tape.print tape
-        | Some (st', tape') -> speed_run_aux (st', tape')
+    let machine' : Machine.t = Machine.setup machine
     in
-    speed_run_aux (Machine.initial machine, Tape.make s)
+    let rec speed_run_aux ((st_id, tape) : Machine.state_id * Tape.t) : unit =
+        match Machine.speed_step machine' st_id tape with
+        | None -> Tape.print tape
+        | Some (st_id', tape') -> speed_run_aux (st_id', tape')
+    in
+    speed_run_aux (Machine.initial_id machine', Tape.make s)
 
 # %%
 let primer_slow_run : unit =
@@ -278,6 +448,7 @@ let primer_speed_run : unit =
 type state_transform = state -> Machine.t -> Machine.t
 type char_state_transform = char -> state_transform
 
+# %%
 let for_state (st : state) (trans_list : state_transform list list) (machine : Machine.t) : Machine.t =
         List.flatten trans_list
         |> List.fold_left
@@ -395,40 +566,61 @@ let primer_reverse_dodatno : unit =
 
 # %%
 let duplicate : Machine.t =
-    Machine.make "rename" ["mark"; "copy"; "write_zero"; "write_one"; "return"]
+    Machine.make "rename" ["duplicate"; "write_zero"; "write_one"; "shift_A"; "shift_B"; "return"]
     |> for_state "rename"
         [
             for_character '0' @@ write_and_move 'A' Right;
             for_character '1' @@ write_and_move 'B' Right;
-            for_character ' ' @@ switch_and_move "copy" Left
+            for_character ' ' @@ switch_and_move "duplicate" Left
         ]
-    |> for_state "copy"
+    |> for_state "duplicate"
         [
-            for_character 'A' @@ write_switch_and_move 'X' "write_zero" Left;
-            for_character 'B' @@ write_switch_and_move 'Y' "write_one" Left;
+            for_character 'A' @@ write_switch_and_move '0' "write_zero" Left;
+            for_character 'B' @@ write_switch_and_move '1' "write_one" Left;
             for_characters "01" @@ move Left;
             for_character ' ' @@ switch_and_move "end" Right
         ]
     |> for_state "write_zero"
         [
-            for_characters "01AB" @@ move Left;
-            for_character ' ' @@ write_switch_and_move '0' "return" Right;
+            for_character 'A' @@ write_switch_and_move '0' "shift_A" Left;
+            for_character 'B' @@ write_switch_and_move '0' "shift_B" Left;
+            for_character ' ' @@ write_switch_and_move '0' "return" Right
         ]
     |> for_state "write_one"
         [
-            for_characters "01AB" @@ move Left;
-            for_character ' ' @@ write_switch_and_move '1' "return" Right;
+            for_character 'A' @@ write_switch_and_move '1' "shift_A" Left;
+            for_character 'B' @@ write_switch_and_move '1' "shift_B" Left;
+            for_character ' ' @@ write_switch_and_move '1' "return" Right
+        ]
+    |> for_state "shift_A"
+        [
+            for_character 'A' @@ write_and_move 'A' Left;
+            for_character 'B' @@ write_switch_and_move 'A' "shift_B" Left;
+            for_character ' ' @@ write_switch_and_move 'A' "return" Right
+        ]
+    |> for_state "shift_B"
+        [
+            for_character 'A' @@ write_switch_and_move 'B' "shift_A" Left;
+            for_character 'B' @@ write_and_move 'B' Left;
+            for_character ' ' @@ write_switch_and_move 'B' "return" Right
         ]
     |> for_state "return"
         [
-            for_characters "01AB" @@ move Right;
-            for_character 'X' @@ write_switch_and_move '0' "copy" Left;
-            for_character 'Y' @@ write_switch_and_move '1' "copy" Left
+            for_characters "AB" @@ move Right;
+            for_characters "01" @@ switch_and_move "duplicate" Left
         ]
 
 # %%
-let primer_duplicate =
+let primer_duplicate : unit =
     speed_run duplicate "010011"
+
+# %%
+let primer_duplicate_dodatno_1 : unit =
+    speed_run duplicate "1"
+
+# %%
+let primer_duplicate_dodatno_2 : unit =
+    speed_run duplicate ""
 
 # %% [markdown]
 # ### Eniški zapis
@@ -517,3 +709,31 @@ let primer_to_binary : unit =
 # %%
 let primer_to_binary_dodatno : unit =
     speed_run to_binary "1"
+
+# %%
+let time (f : unit -> 'a) : 'a =
+    let start_time : float = Sys.time()
+    in
+    let res : 'a = f ()
+    in
+    Printf.printf "Execution time: %fs" (Sys.time() -. start_time);
+    print_newline ();
+    res
+
+# %%
+let busy_beaver5 : Machine.t =
+    Machine.(
+        make "A" ["B"; "C"; "D"; "E"]
+        |> add_transition "A" ' ' "B" '1' Right
+        |> add_transition "A" '1' "C" '1' Left
+        |> add_transition "B" ' ' "C" '1' Right
+        |> add_transition "B" '1' "B" '1' Right
+        |> add_transition "C" ' ' "D" '1' Right
+        |> add_transition "C" '1' "E" ' ' Left
+        |> add_transition "D" ' ' "A" '1' Left
+        |> add_transition "D" '1' "D" '1' Left
+        |> add_transition "E" '1' "A" ' ' Left
+    )
+
+# %%
+let test = time (fun () -> speed_run busy_beaver5 "")
