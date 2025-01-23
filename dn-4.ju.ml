@@ -181,6 +181,18 @@ module type MACHINE_EXTRA =
     end
 
 # %%
+module StateCharMap : (Map.S with type key = state * char) =
+    Map.Make(
+        struct
+            type t = state * char
+            let compare ((st1, c1) : t) ((st2, c2) : t) : int =
+                match String.compare st1 st2 with
+                | 0 -> Char.compare c1 c2
+                | c -> c
+        end
+    )
+
+# %%
 (* WARNING!!! *)
 (* This implementation is only for showcasing a simpler but slightly less efficient solution. *)
 (* Most of the time this would be more than fast enough and due to its much cleaner code and readability it might be the superior option. *)
@@ -197,6 +209,8 @@ module Machine : MACHINE =
 
         (* This implementation is easy to use and is relatively efficient, but making the `step` function O(1) is more important than *)
         (* optimizing `make` and `add_transition`. Therefore other solutions can yield better results. *)
+
+        type instruction = state * char * direction
 
         type t =
             {
@@ -289,7 +303,7 @@ module Machine : MACHINE_EXTRA =
             List.iteri (fun (i : int) (st : state) -> Hashtbl.add id_lookup st i) st_list';
             {
                 initial_state = initial_st;
-                initial_id = State (Hashtbl.find id_lookup initial_st);
+                initial_id = State 0;
 
                 state_array = Array.of_list st_list';
                 state_id_lookup = id_lookup;
@@ -392,24 +406,41 @@ let binary_increment : Machine.t =
 # Zapišite funkciji `slow_run` in `speed_run` tipa `Machine.t -> str -> unit`, ki simulirata Turingov stroj na traku, na katerem je na začetku zapisan dani niz. Prva naj izpiše trakove in stanja pri vseh vmesnih korakih, druga pa naj izpiše le končni trak. Slednjo bomo uporabljali tudi pri meritvi učinkovitosti izvajanja.
 
 # %%
-let slow_run (machine : Machine.t) (s : string) : unit =
-    let machine' : Machine.t = Machine.setup machine
-    in
+(* Implementation compatible with only the binary search tree Machine *)
+let slow_run_old (machine : Machine.t) (s : string) : unit =
     let output (st : state) (tape : Tape.t) : unit =
         Tape.print tape;
         print_endline st;
         print_newline ()
     in
-    let rec slow_run_aux ((st, tape) : state * Tape.t) : unit =
-        match Machine.step machine' st tape with
+    let rec slow_run_old_aux ((st, tape) : state * Tape.t) : unit =
+        match Machine.step machine st tape with
         | None -> output st tape
         | Some (st', tape') ->
             output st tape;
-            slow_run_aux (st', tape')
+            slow_run_old_aux (st', tape')
     in
-    slow_run_aux (Machine.initial machine', Tape.make s)
+    slow_run_old_aux (Machine.initial machine, Tape.make s)
 
 # %%
+(* Implementation compatible with only the new version of Machine *)
+let slow_run (machine : Machine.t) (s : string) : unit =
+    let machine' : Machine.t = Machine.setup machine
+    in
+    slow_run_old machine' s
+
+# %%
+(* Implementation compatible with only the binary search tree Machine *)
+let speed_run_old (machine : Machine.t) (s : string) : unit =
+    let rec speed_run_old_aux ((st, tape) : state * Tape.t) : unit =
+        match Machine.step machine st tape with
+        | None -> Tape.print tape
+        | Some (st', tape') -> speed_run_old_aux (st', tape')
+    in
+    speed_run_old_aux (Machine.initial machine, Tape.make s)
+
+# %%
+(* Implementation compatible with only the new version of Machine *)
 let speed_run (machine : Machine.t) (s : string) : unit =
     let machine' : Machine.t = Machine.setup machine
     in
